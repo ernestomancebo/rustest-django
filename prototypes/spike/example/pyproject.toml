@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "settings"
+pythonpath = [".", ".."]
+addopts = "-p no:cacheprovider"
+
+[tool.rustest-django]
+settings_module = "settings"
