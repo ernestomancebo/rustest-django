@@ -19,10 +19,14 @@ A consumer migrates by:
 `@mark.django_db(transaction=False, reset_sequences=False, databases=None,
 serialized_rollback=False, available_apps=None)`, positional in that order, from
 `rustest.mark` (identical object as `pytest.mark` under `--pytest-compat`). Same defaults
-and validation as pytest-django; unknown kwargs raise `TypeError`. Function-level only in
-rustest 0.18; class-level and module-level `pytestmark` are handled by the upstream-asks
-decision. No decorator alias unless that decision introduces a class decorator, in which
-case it is named `rustest_django.django_db` and also works on functions.
+and validation as pytest-django; unknown kwargs raise `TypeError`.
+
+Function-level marks work directly under rustest 0.18. Class-level marks do not
+propagate to methods (rustest limitation, reported upstream as
+[rustest#143](https://github.com/Apex-Engineers-Inc/rustest/issues/143)); use the
+`rustest_django.django_db(...)` class decorator instead, which applies the marker to
+every `test*` method at class-decoration time. See `docs/spec/upstream.md`. Module-level
+`pytestmark` has no equivalent in v1.
 
 ## Fixtures
 
