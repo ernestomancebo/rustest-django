@@ -91,7 +91,6 @@ def django_db_setup(django_db_blocker: DjangoDbBlocker):
 def _django_db_isolation(
     request: FixtureRequest,
     _django_db_context: _DjangoDbContext,
-    django_db_setup: None,
     django_db_blocker: DjangoDbBlocker,
 ):
     marker = request.node.get_closest_marker("django_db")
@@ -101,6 +100,7 @@ def _django_db_isolation(
         yield
         return
 
+    request.getfixturevalue("django_db_setup")
     _django_db_context._built = True
     _reset_sequences = _django_db_context.reset_sequences or marker_kwargs.get(
         "reset_sequences", False
