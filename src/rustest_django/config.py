@@ -10,10 +10,7 @@ if sys.version_info >= (3, 11):
 else:
     import tomli as tomllib  # ty: ignore[unresolved-import]
 
-
-class ConfigError(Exception):
-    pass
-
+from rustest_django._errors import ConfigError, _message
 
 _KNOWN_TOOL_KEYS = {
     "settings_module",
@@ -68,7 +65,12 @@ def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
         pyproject = directory / "pyproject.toml"
         if not pyproject.is_file():
             continue
-        data = tomllib.loads(pyproject.read_text())
+        try:
+            data = tomllib.loads(pyproject.read_text())
+        except tomllib.TOMLDecodeError as error:
+            raise ConfigError(
+                _message(f"{pyproject} is not valid TOML: {error}")
+            ) from error
         tool = data.get("tool", {})
         project = tool.get("rustest-django", {})
         ini = tool.get("pytest", {}).get("ini_options", {})
@@ -76,8 +78,11 @@ def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
             unknown = set(project) - _KNOWN_TOOL_KEYS
             if unknown:
                 raise ConfigError(
-                    "Unknown key(s) in [tool.rustest-django]: "
-                    f"{', '.join(sorted(unknown))}"
+                    _message(
+                        "Unknown key(s) in [tool.rustest-django]: "
+                        f"{', '.join(sorted(unknown))}. Valid keys: "
+                        f"{', '.join(sorted(_KNOWN_TOOL_KEYS))}."
+                    )
                 )
             return project, ini
     return {}, {}
@@ -93,7 +98,12 @@ def _env_bool(
             return True
         if normalized in ("0", "false", "no", "off"):
             return False
-        raise ConfigError(f"{env_name}={raw!r} is not a valid boolean")
+        raise ConfigError(
+            _message(
+                f"{env_name}={raw!r} is not a valid boolean. Use one of: "
+                "1/true/yes/on or 0/false/no/off."
+            )
+        )
     if project_key is not None and project_key in project:
         return bool(project[project_key])
     return default

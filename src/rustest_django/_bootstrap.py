@@ -7,13 +7,13 @@ from __future__ import annotations
 
 import os
 import sys
-import traceback
 from pathlib import Path
 
 import django
 import django.conf
 from rustest import fixture
 
+from rustest_django._errors import _message
 from rustest_django.config import ResolvedConfig, resolve_config
 
 error: Exception | None = None
@@ -57,14 +57,13 @@ def run() -> None:
             django.setup()
     except Exception as exc:  # noqa: BLE001
         error = exc
-        traceback.print_exc(file=sys.stderr)
 
 
 @fixture(autouse=True, scope="session")
 def _rustest_django_bootstrap_check():
     if error is not None:
         raise RuntimeError(
-            f"rustest-django failed to configure Django at import time: {error}"
+            _message(f"failed to configure Django at import time: {error}")
         ) from error
     yield
 
