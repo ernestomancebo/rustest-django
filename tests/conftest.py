@@ -69,3 +69,9 @@ from rustest_django.queries import (  # noqa: E402,F401
 )
 from rustest_django.settings_fixture import settings  # noqa: E402,F401
 from rustest_django.unittest_guard import _unittest_style_guard  # noqa: E402,F401
+from rustest_django.unsupported import (  # noqa: E402,F401
+    _unsupported_marker_guard,
+    django_db_serialized_rollback,
+    django_isolated_apps,
+    live_server,
+)

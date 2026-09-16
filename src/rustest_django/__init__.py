@@ -42,6 +42,12 @@ from rustest_django.queries import (  # noqa: F401
 )
 from rustest_django.settings_fixture import Settings, settings  # noqa: F401
 from rustest_django.unittest_guard import _unittest_style_guard  # noqa: F401
+from rustest_django.unsupported import (  # noqa: F401
+    _unsupported_marker_guard,
+    django_db_serialized_rollback,
+    django_isolated_apps,
+    live_server,
+)
 
 __version__ = "0.1.0"
 
