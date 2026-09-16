@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from typing import Any
+
 from rustest import FixtureRequest, fixture
 
-from rustest_django import django_compat
+from rustest_django import _bootstrap, django_compat
 from rustest_django.blocker import DjangoDbBlocker
 
 
@@ -74,17 +76,92 @@ def django_db_blocker() -> DjangoDbBlocker:
     return _session_blocker
 
 
+def _resolved(attr: str, default: Any) -> Any:
+    config = _bootstrap.resolved_config
+    return getattr(config, attr) if config is not None else default
+
+
 @fixture(scope="session")
-def django_db_setup(django_db_blocker: DjangoDbBlocker):
+def django_db_keepdb() -> bool:
+    return _resolved("reuse_db", False)
+
+
+@fixture(scope="session")
+def django_db_createdb() -> bool:
+    return _resolved("create_db", False)
+
+
+@fixture(scope="session")
+def django_db_use_migrations() -> bool:
+    return _resolved("migrations", True)
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings() -> None:
+    pass
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings_parallel_suffix() -> None:
+    pass
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings_tox_suffix() -> None:
+    pass
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings_xdist_suffix() -> None:
+    pass
+
+
+def _disable_migrations() -> None:
+    from django.conf import settings
+    from django.core.management.commands import migrate
+
+    class DisableMigrations:
+        def __contains__(self, item: str) -> bool:
+            return True
+
+        def __getitem__(self, item: str) -> None:
+            return None
+
+    settings.MIGRATION_MODULES = DisableMigrations()
+
+    class MigrateSilentCommand(migrate.Command):
+        def handle(self, *args: Any, **kwargs: Any) -> Any:
+            kwargs["verbosity"] = 0
+            return super().handle(*args, **kwargs)
+
+    migrate.Command = MigrateSilentCommand  # ty: ignore[invalid-assignment]
+
+
+@fixture(scope="session")
+def django_db_setup(
+    django_db_blocker: DjangoDbBlocker,
+    django_db_use_migrations: bool,
+    django_db_keepdb: bool,
+    django_db_createdb: bool,
+    django_db_modify_db_settings: None,
+):
     from django.test.utils import setup_databases, teardown_databases
 
+    if not django_db_use_migrations:
+        _disable_migrations()
+
+    setup_kwargs = {}
+    if django_db_keepdb and not django_db_createdb:
+        setup_kwargs["keepdb"] = True
+
     with django_db_blocker.unblock():
-        db_cfg = setup_databases(verbosity=0, interactive=False)
+        db_cfg = setup_databases(verbosity=0, interactive=False, **setup_kwargs)
 
     yield
 
-    with django_db_blocker.unblock():
-        teardown_databases(db_cfg, verbosity=0)
+    if not django_db_keepdb:
+        with django_db_blocker.unblock():
+            teardown_databases(db_cfg, verbosity=0)
 
 
 @fixture(autouse=True)
