@@ -1,0 +1,48 @@
+name: Release
+on:
+  release:
+    types: [published]
+jobs:
+  build-dist:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          # hatch-vcs needs full history with tags reachable, not a shallow clone
+          fetch-depth: 0
+      # github.sha on a `release` event is the default branch's tip, not
+      # necessarily the tagged commit -- resolve the real one from what we
+      # actually checked out above.
+      - name: Verify CI passed for the released commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          sha=$(git rev-parse HEAD)
+          conclusion=$(gh api "repos/${{ github.repository }}/commits/$sha/check-runs" \
+            --jq '[.check_runs[] | select(.name == "build")][0].conclusion // "not found"')
+          echo "ci.yml's build job for $sha: $conclusion"
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::CI did not succeed for the released commit ($sha), refusing to publish."
+            exit 1
+          fi
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - run: uv build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+  publish:
+    needs: build-dist
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
