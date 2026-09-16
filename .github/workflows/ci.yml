@@ -1,0 +1,119 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  UV_LOCKED: "1"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - run: uv sync
+      - run: uv run pre-commit run --all-files
+      - run: uv run ty check src
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.10"
+            django-version: "4.2"
+          - python-version: "3.12"
+            django-version: "4.2"
+          - python-version: "3.13"
+            django-version: "4.2"
+          - python-version: "3.12"
+            django-version: "5.2"
+          - python-version: "3.13"
+            django-version: "5.2"
+          - python-version: "3.12"
+            django-version: "6.1"
+          - python-version: "3.13"
+            django-version: "6.1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --python ${{ matrix.python-version }}
+      - name: Pin Django ${{ matrix.django-version }}
+        run: uv pip install "django==${{ matrix.django-version }}.*"
+      - run: uv run rustest tests --color=never
+  test-postgres:
+    needs: lint
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: "3.10"
+            django-version: "4.2"
+          - python-version: "3.12"
+            django-version: "4.2"
+          - python-version: "3.13"
+            django-version: "4.2"
+          - python-version: "3.12"
+            django-version: "5.2"
+          - python-version: "3.13"
+            django-version: "5.2"
+          - python-version: "3.12"
+            django-version: "6.1"
+          - python-version: "3.13"
+            django-version: "6.1"
+    env:
+      TEST_DB_BACKEND: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --python ${{ matrix.python-version }}
+      - name: Pin Django ${{ matrix.django-version }}
+        run: uv pip install "django==${{ matrix.django-version }}.*"
+      - run: uv run rustest tests --color=never
+  build:
+    needs: [test, test-postgres]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+      - name: Build sdist and wheel
+        run: uv build
+      - name: Check distribution metadata
+        run: uvx twine check dist/*
+      - name: Install the built wheel into a fresh environment
+        run: |
+          uv venv /tmp/wheel-check
+          uv pip install --python /tmp/wheel-check/bin/python dist/*.whl
+          /tmp/wheel-check/bin/python -c "import rustest_django; print(rustest_django.__version__)"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/

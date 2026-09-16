@@ -1,3 +1,4 @@
+import os
 import sys
 from pathlib import Path
 
@@ -6,18 +7,37 @@ from django.conf import settings
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-if not settings.configured:
-    settings.configure(
-        DATABASES={
+
+def _databases() -> dict[str, dict[str, str]]:
+    if os.environ.get("TEST_DB_BACKEND") == "postgres":
+        base = {
+            "ENGINE": "django.db.backends.postgresql",
+            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+            "USER": os.environ.get("POSTGRES_USER", "postgres"),
+            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
+        }
+        return {
             "default": {
-                "ENGINE": "django.db.backends.sqlite3",
-                "NAME": ":memory:",
+                **base,
+                "NAME": "postgres",
+                "TEST": {"NAME": "test_rustest_django"},
             },
             "other": {
-                "ENGINE": "django.db.backends.sqlite3",
-                "NAME": ":memory:",
+                **base,
+                "NAME": "postgres",
+                "TEST": {"NAME": "test_rustest_django_other"},
             },
-        },
+        }
+    return {
+        "default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"},
+        "other": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"},
+    }
+
+
+if not settings.configured:
+    settings.configure(
+        DATABASES=_databases(),
         USE_TZ=True,
         SECRET_KEY="test-secret-key",
         INSTALLED_APPS=[
