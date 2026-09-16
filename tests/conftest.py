@@ -8,24 +8,36 @@ from django.conf import settings
 sys.path.insert(0, str(Path(__file__).parent))
 
 
+def _start_postgres_container():
+    import atexit
+
+    from testcontainers.community.postgres import PostgresContainer
+
+    container = PostgresContainer("postgres:16-alpine", driver="psycopg")
+    container.start()
+    atexit.register(container.stop)
+    return container
+
+
 def _databases() -> dict[str, dict[str, str]]:
     if os.environ.get("TEST_DB_BACKEND") == "postgres":
+        container = _start_postgres_container()
         base = {
             "ENGINE": "django.db.backends.postgresql",
-            "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-            "PORT": os.environ.get("POSTGRES_PORT", "5432"),
-            "USER": os.environ.get("POSTGRES_USER", "postgres"),
-            "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "postgres"),
+            "HOST": container.get_container_host_ip(),
+            "PORT": container.get_exposed_port(5432),
+            "USER": container.username,
+            "PASSWORD": container.password,
         }
         return {
             "default": {
                 **base,
-                "NAME": "postgres",
+                "NAME": container.dbname,
                 "TEST": {"NAME": "test_rustest_django"},
             },
             "other": {
                 **base,
-                "NAME": "postgres",
+                "NAME": container.dbname,
                 "TEST": {"NAME": "test_rustest_django_other"},
             },
         }

@@ -68,9 +68,11 @@ GitHub Actions, `uv` for environment setup. Respects Django 6.1's `>=3.12` floor
 | 3.12, 3.13 | 5.2 (LTS) | sqlite, postgres |
 | 3.12, 3.13 | 6.1 (latest) | sqlite, postgres |
 
-12 cells × 2 runners (pytest, rustest) × 3 example projects. Postgres via the GitHub
-Actions `postgres:` service container. Trimming (e.g. postgres on fewer cells) is a
-follow-up once the suite is slow enough to matter, not pre-optimized now.
+12 cells × 2 runners (pytest, rustest) × 3 example projects. Postgres via
+`testcontainers`, started programmatically from within the test run itself rather than a
+GitHub Actions `services:` block, so local development and CI use the exact same code
+path. Trimming (e.g. postgres on fewer cells) is a follow-up once the suite is slow
+enough to matter, not pre-optimized now.
 
 ## Library unit tests (`tests/`)
 

@@ -53,15 +53,6 @@ jobs:
   test-postgres:
     needs: lint
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     strategy:
       fail-fast: false
       matrix:
@@ -82,10 +73,6 @@ jobs:
             django-version: "6.1"
     env:
       TEST_DB_BACKEND: postgres
-      POSTGRES_HOST: localhost
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v10.1.0
@@ -96,8 +83,203 @@ jobs:
       - name: Pin Django ${{ matrix.django-version }}
         run: uv pip install "django==${{ matrix.django-version }}.*"
       - run: uv run rustest tests --color=never
+  parity:
+    needs: lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/${{ matrix.example }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - example: "minimal-sqlite"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "postgres"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "minimal-sqlite"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "postgres"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "multi-db"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.10"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "4.2"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "5.2"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.12"
+            django-version: "6.1"
+            db-backend: "postgres"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "sqlite"
+          - example: "async-views"
+            python-version: "3.13"
+            django-version: "6.1"
+            db-backend: "postgres"
+    env:
+      TEST_DB_BACKEND: ${{ matrix.db-backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+      - run: uv sync --python ${{ matrix.python-version }}
+      - name: Pin Django ${{ matrix.django-version }}
+        run: uv pip install "django==${{ matrix.django-version }}.*"
+      - name: Run under pytest
+        run: uv run pytest --junit-xml=pytest.xml tests/
+      - name: Run under rustest --pytest-compat
+        run: uv run rustest --pytest-compat --llm tests/ > rustest.jsonl
+      - name: Compare outcomes
+        run: uv run python ../compare_outcomes.py pytest.xml rustest.jsonl
   build:
-    needs: [test, test-postgres]
+    needs: [test, test-postgres, parity]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

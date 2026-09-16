@@ -6,4 +6,5 @@ build/
 *.egg-info/
 .ruff_cache/
 .rustest_cache/
+.pytest_cache/
 .scratch/

@@ -1,0 +1,27 @@
+[project]
+name = "minimal-sqlite-example"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "django>=4.2",
+    "pytest>=8",
+    "pytest-django>=4.9",
+    "rustest>=0.18,<1.0",
+    "rustest-django",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.sources]
+rustest-django = { path = "../..", editable = true }
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "settings"
+pythonpath = ["."]
+
+[tool.rustest-django]
+settings_module = "settings"
+
+[tool.ruff.lint.isort]
+known-first-party = ["blog"]
