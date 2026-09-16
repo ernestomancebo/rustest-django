@@ -68,3 +68,4 @@ from rustest_django.queries import (  # noqa: E402,F401
     django_capture_on_commit_callbacks,
 )
 from rustest_django.settings_fixture import settings  # noqa: E402,F401
+from rustest_django.unittest_guard import _unittest_style_guard  # noqa: E402,F401
