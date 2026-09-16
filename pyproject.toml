@@ -19,13 +19,68 @@ build-backend = "hatchling.build"
 packages = ["src/rustest_django"]
 
 [dependency-groups]
-dev = [
-    "ruff",
-    "ty",
-]
+dev = ["ruff", "ty", "psycopg[binary]>=3", "pre-commit"]
 
 [tool.ruff]
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP"]
+select = [
+    "E",
+    "ERA",
+    "FAST",
+    "S",
+    "ASYNC",
+    "T20",   # No print statements
+    "W",
+    "F",
+    "SIM",
+    "I",
+    "B",
+    "C4",
+    "UP",
+]
+
+dummy-variable-rgx = "^_$"
+unfixable = ["T20"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/{tests}/*" = [
+    # Ignores "assert" statement
+    "S101", # Ignores hardcoaded passwords
+    "S105",
+    "S106",
+    "S107", # Ignores request timeout
+    "S113",
+    # subprocess calls in tests run our own CLI with a fixed, non-user-controlled
+    # argument list (scratch consumer projects), never untrusted input
+    "S603",
+]
+# Ported from pytest-django's asserts.pyi; the "with assertX(...): ..." lines are
+# usage examples for the overloads below them, not commented-out code.
+"**/*.pyi" = ["ERA001"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["rustest_django"]
+
+[tool.ruff.format]
+# Like Black, use double quotes for strings.
+quote-style = "double"
+# Like Black, indent with spaces, rather than tabs.
+indent-style = "space"
+# Like Black, respect magic trailing commas.
+skip-magic-trailing-comma = false
+# Unix line endings
+line-ending = "lf"
+# Enable auto-formatting of code examples in docstrings. Markdown,
+# reStructuredText code/literal blocks and doctests are all supported.
+#
+# This is currently disabled by default, but it is planned for this
+# to be opt-out in the future.
+docstring-code-format = false
+# Set the line length limit used when formatting code snippets in
+# docstrings.
+#
+# This only has an effect when the `docstring-code-format` setting is
+# enabled.
+docstring-code-line-length = "dynamic"

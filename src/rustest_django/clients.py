@@ -54,7 +54,7 @@ def admin_user(
         user_data = {}
         if "email" in user_model.REQUIRED_FIELDS:
             user_data["email"] = "admin@example.com"
-        user_data["password"] = "password"
+        user_data["password"] = "password"  # noqa: S105 -- pytest-django's own default
         user_data[username_field] = username
         user = user_model._default_manager.create_superuser(**user_data)
     return user

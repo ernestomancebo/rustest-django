@@ -28,9 +28,8 @@ def test_block_as_context_manager_restores_previous_state_on_exit() -> None:
     blocker = DjangoDbBlocker()
     blocker.unblock()
 
-    with blocker.block():
-        with raises(RuntimeError):
-            connection.ensure_connection()
+    with blocker.block(), raises(RuntimeError):
+        connection.ensure_connection()
 
     connection.ensure_connection()
     blocker.restore()
