@@ -1,6 +1,9 @@
 # Make file targets: lint, test, parity-test, pre-commit, install (uv install), build
+.PHONY: setup install lint test pre-commit build parity-test
+
 setup:
-	echo "TODO: install dependencies, install pre-commit"
+	uv sync
+	uv run pre-commit install
 
 install:
 	uv sync --frozen --all-extras
@@ -22,3 +25,21 @@ build:
 	rm -rf dist
 	uv build
 	uvx twine check dist/*
+
+# Parity check (sqlite only, local dev use) for one or all example projects.
+# Usage: make parity-test or make parity-test example=multi-db
+example ?= minimal-sqlite multi-db async-views
+parity-test:
+	@for dir in $(example); do \
+		echo "=== $$dir ==="; \
+		( \
+			cd examples/$$dir && \
+			uv sync && \
+			uv run pytest --junit-xml=pytest.xml tests/ && \
+			uv run rustest --pytest-compat --llm tests/ > rustest.jsonl && \
+			uv run python ../compare_outcomes.py pytest.xml rustest.jsonl; \
+			rc=$$?; \
+			rm -f pytest.xml rustest.jsonl; \
+			exit $$rc \
+		) || exit 1; \
+	done
