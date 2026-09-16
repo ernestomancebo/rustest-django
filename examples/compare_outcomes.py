@@ -20,7 +20,7 @@ from pathlib import Path
 
 
 def _pytest_outcomes(junit_xml_path: Path) -> dict[str, str]:
-    root = ET.parse(junit_xml_path).getroot()
+    root = ET.parse(junit_xml_path).getroot()  # noqa: S314 -- our own just-generated file
     outcomes: dict[str, str] = {}
     for testcase in root.iter("testcase"):
         classname = testcase.attrib["classname"]
@@ -28,9 +28,7 @@ def _pytest_outcomes(junit_xml_path: Path) -> dict[str, str]:
         path = classname.replace(".", "/") + ".py"
         test_id = f"{path}::{name}"
 
-        if testcase.find("failure") is not None:
-            outcome = "failed"
-        elif testcase.find("error") is not None:
+        if testcase.find("failure") is not None or testcase.find("error") is not None:
             outcome = "failed"
         elif testcase.find("skipped") is not None:
             outcome = "skipped"
@@ -40,7 +38,9 @@ def _pytest_outcomes(junit_xml_path: Path) -> dict[str, str]:
     return outcomes
 
 
-def _rustest_outcomes(jsonl_path: Path, all_ids: set[str]) -> tuple[dict[str, str], int]:
+def _rustest_outcomes(
+    jsonl_path: Path, all_ids: set[str]
+) -> tuple[dict[str, str], int]:
     non_passing: dict[str, str] = {}
     collection_errors: list[str] = []
     total = None
@@ -58,7 +58,12 @@ def _rustest_outcomes(jsonl_path: Path, all_ids: set[str]) -> tuple[dict[str, st
         elif kind == "error":
             collection_errors.append(record["path"])
         elif kind == "summary":
-            total = record["passed"] + record["failed"] + record["skipped"] + record["errors"]
+            total = (
+                record["passed"]
+                + record["failed"]
+                + record["skipped"]
+                + record["errors"]
+            )
 
     if total is None:
         raise AssertionError(
@@ -95,9 +100,13 @@ def compare(junit_xml_path: Path, jsonl_path: Path) -> None:
             f"  {test_id}: pytest={p!r} rustest={r!r}"
             for test_id, (p, r) in sorted(mismatches.items())
         )
-        raise AssertionError(f"Outcome mismatch for {len(mismatches)} test(s):\n{lines}")
+        raise AssertionError(
+            f"Outcome mismatch for {len(mismatches)} test(s):\n{lines}"
+        )
 
-    print(f"Parity confirmed: {len(pytest_outcomes)} tests, identical outcomes.")
+    print(  # noqa: T201 -- this is the CLI's whole reason to exist
+        f"Parity confirmed: {len(pytest_outcomes)} tests, identical outcomes."
+    )
 
 
 if __name__ == "__main__":

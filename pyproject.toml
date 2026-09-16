@@ -19,7 +19,7 @@ build-backend = "hatchling.build"
 packages = ["src/rustest_django"]
 
 [dependency-groups]
-dev = ["ruff", "ty", "psycopg[binary]>=3", "pre-commit"]
+dev = ["ruff", "ty", "psycopg[binary]>=3", "pre-commit", "testcontainers[postgres]>=4"]
 
 [tool.ruff]
 line-length = 88
