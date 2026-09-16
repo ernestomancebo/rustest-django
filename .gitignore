@@ -8,3 +8,4 @@ build/
 .rustest_cache/
 .pytest_cache/
 .scratch/
+site/

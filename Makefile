@@ -1,5 +1,5 @@
-# Make file targets: lint, test, parity-test, pre-commit, install (uv install), build
-.PHONY: setup install lint test pre-commit build parity-test
+# Make file targets: lint, test, parity-test, pre-commit, install (uv install), build, docs
+.PHONY: setup install lint test pre-commit build parity-test docs
 
 setup:
 	uv sync
@@ -25,6 +25,9 @@ build:
 	rm -rf dist
 	uv build
 	uvx twine check dist/*
+
+docs:
+	uv run --group docs mkdocs serve
 
 # Parity check (sqlite only, local dev use) for one or all example projects.
 # Usage: make parity-test or make parity-test example=multi-db
