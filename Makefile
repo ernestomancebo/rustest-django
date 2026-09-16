@@ -1,4 +1,6 @@
 # Make file targets: lint, test, parity-test, pre-commit, install (uv install), build
+.PHONY: setup install lint test pre-commit build parity-test
+
 setup:
 	uv sync
 	uv run pre-commit install
