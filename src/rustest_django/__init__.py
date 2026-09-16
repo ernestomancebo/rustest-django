@@ -1,3 +1,4 @@
+from rustest_django import asserts  # noqa: F401
 from rustest_django._bootstrap import _rustest_django_bootstrap_check  # noqa: F401
 from rustest_django.blocker import DjangoDbBlocker
 from rustest_django.clients import (  # noqa: F401
