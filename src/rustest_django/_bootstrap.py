@@ -14,9 +14,10 @@ import django
 import django.conf
 from rustest import fixture
 
-from rustest_django.config import resolve_config
+from rustest_django.config import ResolvedConfig, resolve_config
 
 error: Exception | None = None
+resolved_config: ResolvedConfig | None = None
 
 
 def _find_start_dir() -> Path:
@@ -37,10 +38,11 @@ def _find_project_dir(start_dir: Path) -> Path | None:
 
 
 def run() -> None:
-    global error
+    global error, resolved_config
     try:
         start_dir = _find_start_dir()
         config = resolve_config(start_dir)
+        resolved_config = config
 
         if config.find_project:
             project_dir = _find_project_dir(start_dir)

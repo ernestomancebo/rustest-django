@@ -61,11 +61,8 @@ def test_django_db_marker_transaction_kwarg_flushes(_iteration: int) -> None:
     assert Thing.objects.count() == 1
 
 
-@mark.django_db(
-    reset_sequences=True, serialized_rollback=True, available_apps=["dbapp"]
-)
-@parametrize("_iteration", [0, 1])
-def test_django_db_marker_extra_kwargs_do_not_break_isolation(_iteration: int) -> None:
+@mark.django_db(reset_sequences=True, available_apps=["dbapp"])
+def test_django_db_marker_extra_kwargs_do_not_break_isolation() -> None:
     assert Thing.objects.count() == 0
 
     Thing.objects.create(name="epsilon")

@@ -19,10 +19,25 @@ if not settings.configured:
             },
         },
         USE_TZ=True,
-        INSTALLED_APPS=["dbapp"],
+        SECRET_KEY="test-secret-key",
+        INSTALLED_APPS=[
+            "django.contrib.auth",
+            "django.contrib.contenttypes",
+            "django.contrib.sessions",
+            "dbapp",
+        ],
     )
     django.setup()
 
+from rustest_django.clients import (  # noqa: E402,F401
+    admin_client,
+    admin_user,
+    client,
+    django_user_model,
+    django_username_field,
+    rf,
+)
+from rustest_django.environment import django_test_environment  # noqa: E402,F401
 from rustest_django.isolation import (  # noqa: E402,F401
     _django_db_context,
     _django_db_isolation,
