@@ -9,3 +9,4 @@ build/
 .pytest_cache/
 .scratch/
 site/
+.build/

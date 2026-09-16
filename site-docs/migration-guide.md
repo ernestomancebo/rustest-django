@@ -1,3 +1,9 @@
+---
+id: 20260916090100
+title: Migration Guide
+tags: [guide]
+---
+
 # Migration Guide
 
 Moving an existing pytest-django test suite to rustest-django. Three changes, in order.

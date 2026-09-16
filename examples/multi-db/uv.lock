@@ -574,7 +574,7 @@ dev = [
 ]
 docs = [
     { name = "mkdocs" },
-    { name = "mkdocs-material" },
+    { name = "mkdocs-zettelkasten" },
 ]
 
 [[package]]
