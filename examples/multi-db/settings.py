@@ -43,7 +43,7 @@ def _databases() -> dict[str, dict[str, str]]:
 DATABASES = _databases()
 
 USE_TZ = True
-SECRET_KEY = "example-not-a-real-secret"
+SECRET_KEY = "example-not-a-real-secret"  # noqa: S105
 
 INSTALLED_APPS = [
     "django.contrib.auth",
