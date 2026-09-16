@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import django.test
 from rustest import FixtureRequest, fixture
 
+from rustest_django import django_compat
 from rustest_django.blocker import DjangoDbBlocker
 
 
@@ -18,6 +18,7 @@ class _DjangoDbContext:
     def __init__(self) -> None:
         self.requested = False
         self.transaction = False
+        self.reset_sequences = False
         self._built = False
 
     def _require_not_built(self, fixture_name: str) -> None:
@@ -37,6 +38,12 @@ class _DjangoDbContext:
         self.requested = True
         self.transaction = True
 
+    def request_reset_sequences(self) -> None:
+        self._require_not_built("django_db_reset_sequences")
+        self.requested = True
+        self.transaction = True
+        self.reset_sequences = True
+
 
 @fixture
 def _django_db_context() -> _DjangoDbContext:
@@ -51,6 +58,11 @@ def db(_django_db_context: _DjangoDbContext) -> None:
 @fixture
 def transactional_db(_django_db_context: _DjangoDbContext) -> None:
     _django_db_context.request_transactional()
+
+
+@fixture
+def django_db_reset_sequences(_django_db_context: _DjangoDbContext) -> None:
+    _django_db_context.request_reset_sequences()
 
 
 _session_blocker = DjangoDbBlocker()
@@ -82,39 +94,37 @@ def _django_db_isolation(
     django_db_setup: None,
     django_db_blocker: DjangoDbBlocker,
 ):
-    if not _django_db_context.requested:
+    marker = request.node.get_closest_marker("django_db")
+    marker_kwargs = marker.kwargs if marker is not None else {}
+
+    if not _django_db_context.requested and marker is None:
         yield
         return
 
     _django_db_context._built = True
-    transactional = _django_db_context.transaction
+    _reset_sequences = _django_db_context.reset_sequences or marker_kwargs.get(
+        "reset_sequences", False
+    )
+    _serialized_rollback = marker_kwargs.get("serialized_rollback", False)
+    _databases = marker_kwargs.get("databases")
+    _available_apps = marker_kwargs.get("available_apps")
+    transactional = (
+        _django_db_context.transaction
+        or _reset_sequences
+        or marker_kwargs.get("transaction", False)
+    )
 
     with django_db_blocker.unblock():
-        test_case_class = (
-            django.test.TransactionTestCase if transactional else django.test.TestCase
+        test_case_class = django_compat.build_test_case_class(
+            transactional=transactional,
+            reset_sequences=_reset_sequences,
+            serialized_rollback=_serialized_rollback,
+            databases=_databases,
+            available_apps=_available_apps,
         )
+        test_case = django_compat.pre_setup(test_case_class)
 
-        class _RustestDjangoTestCase(test_case_class):
-            if not transactional:
-
-                @classmethod
-                def setUpClass(cls) -> None:
-                    super(django.test.TestCase, cls).setUpClass()
-
-                @classmethod
-                def tearDownClass(cls) -> None:
-                    super(django.test.TestCase, cls).tearDownClass()
-
-        _RustestDjangoTestCase.setUpClass()
-        test_case = _RustestDjangoTestCase(methodName="__init__")
-        pre_setup_ran_eagerly = getattr(
-            _RustestDjangoTestCase, "_pre_setup_ran_eagerly", False
-        )
-        if not pre_setup_ran_eagerly:
-            test_case._pre_setup()
-
-        yield
-
-        test_case._post_teardown()
-        _RustestDjangoTestCase.tearDownClass()
-        _RustestDjangoTestCase.doClassCleanups()
+        try:
+            yield
+        finally:
+            django_compat.post_teardown(test_case, test_case_class)

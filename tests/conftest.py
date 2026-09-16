@@ -12,7 +12,11 @@ if not settings.configured:
             "default": {
                 "ENGINE": "django.db.backends.sqlite3",
                 "NAME": ":memory:",
-            }
+            },
+            "other": {
+                "ENGINE": "django.db.backends.sqlite3",
+                "NAME": ":memory:",
+            },
         },
         USE_TZ=True,
         INSTALLED_APPS=["dbapp"],
@@ -24,6 +28,7 @@ from rustest_django.isolation import (  # noqa: E402,F401
     _django_db_isolation,
     db,
     django_db_blocker,
+    django_db_reset_sequences,
     django_db_setup,
     transactional_db,
 )
