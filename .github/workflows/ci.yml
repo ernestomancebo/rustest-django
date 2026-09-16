@@ -278,6 +278,16 @@ jobs:
         run: uv run rustest --pytest-compat --llm tests/ > rustest.jsonl
       - name: Compare outcomes
         run: uv run python ../compare_outcomes.py pytest.xml rustest.jsonl
+  docs:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync --group docs
+      - run: uv run mkdocs build --strict
   build:
     needs: [test, test-postgres, parity]
     runs-on: ubuntu-latest

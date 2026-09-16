@@ -269,6 +269,10 @@ dev = [
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4" },
     { name = "ty" },
 ]
+docs = [
+    { name = "mkdocs" },
+    { name = "mkdocs-zettelkasten" },
+]
 
 [[package]]
 name = "sqlparse"
