@@ -160,8 +160,9 @@ def test_skips_pyproject_with_neither_section(tmp_path: Path, monkeypatch) -> No
 def test_unparsable_env_bool_fails_fast(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setenv("RUSTEST_DJANGO_REUSE_DB", "banana")
 
-    with raises(ConfigError):
+    with raises(ConfigError, match=r"^rustest-django: ") as exc_info:
         resolve_config(tmp_path)
+    assert "1/true/yes/on or 0/false/no/off" in str(exc_info.value)
 
 
 def test_unknown_key_in_tool_section_fails_fast(tmp_path: Path, monkeypatch) -> None:
@@ -172,7 +173,15 @@ def test_unknown_key_in_tool_section_fails_fast(tmp_path: Path, monkeypatch) -> 
         """
     )
 
-    with raises(ConfigError):
+    with raises(ConfigError, match=r"^rustest-django: ") as exc_info:
+        resolve_config(tmp_path)
+    assert "Valid keys:" in str(exc_info.value)
+
+
+def test_invalid_toml_fails_fast(tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[tool.rustest-django\n")
+
+    with raises(ConfigError, match=r"^rustest-django: .+not valid TOML"):
         resolve_config(tmp_path)
 
 

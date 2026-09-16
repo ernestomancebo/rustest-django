@@ -6,6 +6,8 @@ from pathlib import Path
 import django.test
 from rustest import FixtureRequest, fail, fixture
 
+from rustest_django._errors import _message
+
 
 def _resolve_test_class(node: object) -> type | None:
     # rustest's node exposes no `.cls`; the class name is embedded in
@@ -34,10 +36,13 @@ def _unittest_style_guard(request: FixtureRequest) -> None:
     test_class = _resolve_test_class(request.node)
     if test_class is not None and issubclass(test_class, django.test.SimpleTestCase):
         fail(
-            f"{test_class.__module__}.{test_class.__qualname__} is a "
-            "unittest-style Django TestCase (SimpleTestCase/TestCase/"
-            "TransactionTestCase/LiveServerTestCase), which is unsupported "
-            "in rustest-django v1: rustest discards its result, so every "
-            "method would otherwise silently report as passed. Use plain "
-            "functions with the db/transactional_db fixtures instead."
+            _message(
+                f"{test_class.__module__}.{test_class.__qualname__} is a "
+                "unittest-style Django TestCase (SimpleTestCase/TestCase/"
+                "TransactionTestCase/LiveServerTestCase), which is "
+                "unsupported in rustest-django v1: rustest discards its "
+                "result, so every method would otherwise silently report "
+                "as passed. Use plain functions with the db/transactional_db "
+                "fixtures instead."
+            )
         )

@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 import textwrap
@@ -5,11 +6,14 @@ from pathlib import Path
 
 
 def _run_rustest(project_dir: Path) -> subprocess.CompletedProcess:
+    # A wide COLUMNS keeps rustest's own output renderer from hard-wrapping
+    # long error messages mid-word, which would break substring assertions.
     return subprocess.run(
         [sys.executable, "-m", "rustest", "--color=never", str(project_dir)],
         cwd=project_dir,
         capture_output=True,
         text=True,
+        env={**os.environ, "COLUMNS": "300"},
     )
 
 
@@ -51,7 +55,9 @@ def test_unittest_style_testcase_fails_loudly(tmp_path: Path) -> None:
     assert result.returncode != 0, result.stdout + result.stderr
     assert "1 failed" in result.stderr
     assert "MyLegacyTests" in result.stderr
+    assert "rustest-django: " in result.stderr
     assert "unsupported in rustest-django v1" in result.stderr
+    assert "Use plain functions with the db/transactional_db fixtures" in result.stderr
 
 
 def test_plain_function_test_is_unaffected(tmp_path: Path) -> None:
