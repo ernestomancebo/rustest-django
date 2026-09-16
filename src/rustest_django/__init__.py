@@ -1,3 +1,5 @@
+from importlib.metadata import version as _pkg_version
+
 from rustest_django import asserts  # noqa: F401
 from rustest_django._bootstrap import _rustest_django_bootstrap_check  # noqa: F401
 from rustest_django.blocker import DjangoDbBlocker
@@ -51,7 +53,7 @@ from rustest_django.unsupported import (  # noqa: F401
     live_server,
 )
 
-__version__ = "0.1.0"
+__version__ = _pkg_version("rustest-django")
 
 __all__ = [
     "DjangoAssertNumQueries",

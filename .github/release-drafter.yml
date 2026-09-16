@@ -1,0 +1,59 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+template: |
+  ## What's Changed
+
+  $CHANGES
+change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
+categories:
+  - title: '🚀 Features'
+    labels:
+      - feature
+      - enhancement
+  - title: '🐛 Bug Fixes'
+    labels:
+      - bug
+      - fix
+  - title: '🧰 Maintenance'
+    labels:
+      - chore
+# Branch prefix checked first; PR title used as a fallback when no branch pattern
+# matches. Both combine with OR logic per release-drafter's own matching, which
+# gives "branch first, title fallback" behavior without any extra priority
+# mechanism. Verified against this repo's real branch/title history, not a
+# generic template -- e.g. PR #27 ("Fix stale README...") has a title starting
+# with "Fix" but branch housekeeping/readme-makefile, and correctly files under
+# Maintenance rather than Bug Fixes because branch is checked first.
+autolabeler:
+  - label: feature
+    branch:
+      - '/^build\//'
+      - '/^examples\//'
+    title:
+      - '/^(Add|Implement|Wire|Build|Introduce)\b/'
+  - label: fix
+    branch:
+      - '/^fix\//'
+      - '/^bugfix\//'
+    title:
+      - '/^Fix\b/'
+  - label: chore
+    branch:
+      - '/^housekeeping\//'
+      - '/^research\//'
+      - '/^prototype\//'
+    title:
+      - '/^(Update|Bump|Remove|Clean up)\b/'
+version-resolver:
+  minor:
+    labels:
+      - feature
+      - enhancement
+  patch:
+    labels:
+      - bug
+      - fix
+      - chore
+  default: patch
+exclude-labels:
+  - skip-changelog
