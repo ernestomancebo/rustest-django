@@ -3,6 +3,8 @@ from rustest_django.blocker import DjangoDbBlocker
 from rustest_django.clients import (  # noqa: F401
     admin_client,
     admin_user,
+    async_client,
+    async_rf,
     client,
     django_user_model,
     django_username_field,

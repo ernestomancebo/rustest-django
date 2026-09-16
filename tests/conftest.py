@@ -32,6 +32,8 @@ if not settings.configured:
 from rustest_django.clients import (  # noqa: E402,F401
     admin_client,
     admin_user,
+    async_client,
+    async_rf,
     client,
     django_user_model,
     django_username_field,

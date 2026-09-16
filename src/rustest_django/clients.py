@@ -15,6 +15,16 @@ def rf() -> django.test.RequestFactory:
 
 
 @fixture
+def async_client() -> django.test.AsyncClient:
+    return django.test.AsyncClient()
+
+
+@fixture
+def async_rf() -> django.test.AsyncRequestFactory:
+    return django.test.AsyncRequestFactory()
+
+
+@fixture
 def django_user_model(db):
     from django.contrib.auth import get_user_model
 
