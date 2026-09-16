@@ -49,6 +49,20 @@ def test_unblock_as_context_manager_restores_block_on_exit() -> None:
     blocker.restore()
 
 
+def test_unblock_on_a_fresh_instance_reaches_the_true_original_method() -> None:
+    stale_blocker = DjangoDbBlocker()
+    stale_blocker.block()  # left blocked on purpose, no restore()
+
+    fresh_blocker = DjangoDbBlocker()
+    fresh_blocker.unblock()
+
+    connection.ensure_connection()
+
+    assert connection.connection is not None
+    fresh_blocker.restore()
+    stale_blocker.restore()
+
+
 def test_is_active_reflects_pending_block_or_unblock() -> None:
     blocker = DjangoDbBlocker()
 

@@ -5,6 +5,8 @@ from typing import Any, NoReturn
 
 from django.db.backends.base.base import BaseDatabaseWrapper
 
+_real_ensure_connection = BaseDatabaseWrapper.ensure_connection
+
 
 def _blocking_wrapper(*args: Any, **kwargs: Any) -> NoReturn:
     raise RuntimeError(
@@ -27,7 +29,6 @@ class _RestoreOnExit:
 class DjangoDbBlocker:
     def __init__(self) -> None:
         self._history: list[Callable[..., Any]] = []
-        self._real_ensure_connection = BaseDatabaseWrapper.ensure_connection
 
     def _save_active_wrapper(self) -> None:
         self._history.append(BaseDatabaseWrapper.ensure_connection)
@@ -39,7 +40,7 @@ class DjangoDbBlocker:
 
     def unblock(self) -> _RestoreOnExit:
         self._save_active_wrapper()
-        BaseDatabaseWrapper.ensure_connection = self._real_ensure_connection
+        BaseDatabaseWrapper.ensure_connection = _real_ensure_connection
         return _RestoreOnExit(self)
 
     def restore(self) -> None:
