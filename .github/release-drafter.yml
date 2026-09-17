@@ -6,15 +6,15 @@ template: |
   $CHANGES
 change-template: '- $TITLE (#$NUMBER) @$AUTHOR'
 categories:
-  - title: '🚀 Features'
+  - title: 'Features'
     labels:
       - feature
       - enhancement
-  - title: '🐛 Bug Fixes'
+  - title: 'Bug Fixes'
     labels:
       - bug
       - fix
-  - title: '🧰 Maintenance'
+  - title: 'Maintenance'
     labels:
       - chore
 # Branch prefix checked first; PR title used as a fallback when no branch pattern

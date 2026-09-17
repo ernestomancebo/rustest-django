@@ -1,0 +1,131 @@
+/* Solarized Dark for Material for MkDocs — Ethan Schoonover
+   https://github.com/altercation/solarized
+
+   Canonical Solarized hex values (base03/02/01/00/0/1/2/3 + the eight
+   accent colors); same values the repo's mkdocs-zettelkasten "solarized"
+   scheme already uses, so both themes stay consistent if compared.
+
+   A fully custom Material color scheme needs to define every variable a
+   built-in scheme (like "slate") would otherwise provide -- there's no
+   inheritance from "default"/"slate" for an unrecognized scheme name. */
+
+[data-md-color-scheme="solarized-dark"] {
+  color-scheme: dark;
+
+  --md-default-fg-color: rgba(131, 148, 150, 0.82);
+  --md-default-fg-color--light: rgba(131, 148, 150, 0.56);
+  --md-default-fg-color--lighter: rgba(131, 148, 150, 0.32);
+  --md-default-fg-color--lightest: rgba(131, 148, 150, 0.12);
+  --md-default-bg-color: #002b36;
+  --md-default-bg-color--light: rgba(0, 43, 54, 0.54);
+  --md-default-bg-color--lighter: rgba(0, 43, 54, 0.26);
+  --md-default-bg-color--lightest: rgba(0, 43, 54, 0.07);
+
+  --md-code-fg-color: rgba(131, 148, 150, 0.82);
+  --md-code-bg-color: #073642;
+  --md-code-bg-color--light: rgba(7, 54, 66, 0.9);
+  --md-code-bg-color--lighter: rgba(7, 54, 66, 0.54);
+  --md-code-hl-color: #268bd2;
+  --md-code-hl-color--light: #268bd21a;
+  --md-code-hl-number-color: #d33682;
+  --md-code-hl-special-color: #dc322f;
+  --md-code-hl-function-color: #268bd2;
+  --md-code-hl-constant-color: #6c71c4;
+  --md-code-hl-keyword-color: #859900;
+  --md-code-hl-string-color: #2aa198;
+  --md-code-hl-name-color: var(--md-code-fg-color);
+  --md-code-hl-operator-color: var(--md-default-fg-color--light);
+  --md-code-hl-punctuation-color: var(--md-default-fg-color--light);
+  --md-code-hl-comment-color: #586e75;
+  --md-code-hl-generic-color: var(--md-default-fg-color--light);
+  --md-code-hl-variable-color: var(--md-default-fg-color--light);
+
+  --md-typeset-color: var(--md-default-fg-color);
+  --md-typeset-a-color: #268bd2;
+  --md-typeset-kbd-color: rgba(131, 148, 150, 0.12);
+  --md-typeset-kbd-accent-color: rgba(131, 148, 150, 0.2);
+  --md-typeset-kbd-border-color: #002b36;
+  --md-typeset-mark-color: #268bd24d;
+  --md-typeset-table-color: rgba(131, 148, 150, 0.12);
+  --md-typeset-table-color--light: rgba(131, 148, 150, 0.035);
+
+  --md-admonition-fg-color: var(--md-default-fg-color);
+  --md-admonition-bg-color: var(--md-default-bg-color);
+
+  --md-footer-bg-color: rgba(0, 43, 54, 0.87);
+  --md-footer-bg-color--dark: #00212b;
+
+  --md-shadow-z1: 0 0.2rem 0.5rem #0000000d, 0 0 0.05rem #0000001a;
+  --md-shadow-z2: 0 0.2rem 0.5rem #00000040, 0 0 0.05rem #00000040;
+  --md-shadow-z3: 0 0.2rem 0.5rem #0006, 0 0 0.05rem #00000059;
+
+  /* header/nav = base02, the "background highlights" tone */
+  --md-primary-fg-color: #073642;
+  --md-primary-fg-color--light: #0a4a5c;
+  --md-primary-fg-color--dark: #002b36;
+  --md-primary-bg-color: #93a1a1;
+  --md-primary-bg-color--light: rgba(147, 161, 161, 0.7);
+
+  /* links/buttons/search = Solarized blue */
+  --md-accent-fg-color: #268bd2;
+  --md-accent-fg-color--transparent: #268bd21a;
+  --md-accent-bg-color: #fdf6e3;
+  --md-accent-bg-color--light: rgba(253, 246, 227, 0.7);
+}
+
+[data-md-color-scheme="solarized-dark"] img[src$="#gh-light-mode-only"],
+[data-md-color-scheme="solarized-dark"] img[src$="#only-light"] {
+  display: none;
+}
+
+/* note=blue, warning=yellow, danger=red -- Solarized's own accent semantics */
+[data-md-color-scheme="solarized-dark"] .md-typeset .admonition.note,
+[data-md-color-scheme="solarized-dark"] .md-typeset details.note {
+  border-color: #268bd2;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > .admonition-title,
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > summary {
+  background-color: #268bd21a;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > .admonition-title::before,
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > summary::before {
+  background-color: #268bd2;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > .admonition-title::after,
+[data-md-color-scheme="solarized-dark"] .md-typeset .note > summary::after {
+  color: #268bd2;
+}
+
+[data-md-color-scheme="solarized-dark"] .md-typeset .admonition.warning,
+[data-md-color-scheme="solarized-dark"] .md-typeset details.warning {
+  border-color: #b58900;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > .admonition-title,
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > summary {
+  background-color: #b589001a;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > .admonition-title::before,
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > summary::before {
+  background-color: #b58900;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > .admonition-title::after,
+[data-md-color-scheme="solarized-dark"] .md-typeset .warning > summary::after {
+  color: #b58900;
+}
+
+[data-md-color-scheme="solarized-dark"] .md-typeset .admonition.danger,
+[data-md-color-scheme="solarized-dark"] .md-typeset details.danger {
+  border-color: #dc322f;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > .admonition-title,
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > summary {
+  background-color: #dc322f1a;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > .admonition-title::before,
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > summary::before {
+  background-color: #dc322f;
+}
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > .admonition-title::after,
+[data-md-color-scheme="solarized-dark"] .md-typeset .danger > summary::after {
+  color: #dc322f;
+}

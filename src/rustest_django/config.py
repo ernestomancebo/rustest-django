@@ -20,6 +20,8 @@ _KNOWN_TOOL_KEYS = {
     "debug_mode",
 }
 
+_DEBUG_MODE_VALUES = ("true", "false", "keep")
+
 
 @dataclass(frozen=True)
 class ResolvedConfig:
@@ -54,9 +56,7 @@ def resolve_config(start_dir: Path) -> ResolvedConfig:
             "find_project",
             default=ini.get("django_find_project", True),
         ),
-        debug_mode=os.environ.get("RUSTEST_DJANGO_DEBUG_MODE")
-        or project.get("debug_mode")
-        or ini.get("django_debug_mode", "false"),
+        debug_mode=_debug_mode(project, ini),
     )
 
 
@@ -107,3 +107,24 @@ def _env_bool(
     if project_key is not None and project_key in project:
         return bool(project[project_key])
     return default
+
+
+def _debug_mode(project: dict, ini: dict) -> str:
+    if "RUSTEST_DJANGO_DEBUG_MODE" in os.environ:
+        raw: object = os.environ["RUSTEST_DJANGO_DEBUG_MODE"]
+    elif "debug_mode" in project:
+        raw = project["debug_mode"]
+    elif "django_debug_mode" in ini:
+        raw = ini["django_debug_mode"]
+    else:
+        return "false"
+
+    if isinstance(raw, str) and raw.strip().lower() in _DEBUG_MODE_VALUES:
+        return raw.strip().lower()
+
+    raise ConfigError(
+        _message(
+            f"debug_mode={raw!r} is not a valid debug_mode. Use one of: "
+            f"{', '.join(_DEBUG_MODE_VALUES)}."
+        )
+    )

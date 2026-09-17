@@ -1,9 +1,3 @@
----
-id: 20260916090500
-title: Unsupported features
-tags: [reference]
----
-
 # Unsupported features
 
 A handful of pytest-django features exist in rustest-django only to fail loudly --

@@ -1,9 +1,3 @@
----
-id: 20260916090100
-title: Migration Guide
-tags: [guide]
----
-
 # Migration Guide
 
 Moving an existing pytest-django test suite to rustest-django. Three changes, in order.
@@ -129,9 +123,9 @@ def test_rf_builds_a_request(rf):
 
 The fixtures themselves (`client`, `rf`, `admin_client`, `transactional_db`, ...) are
 looked up by name and need no changes at all, same as pytest-django. Only the *import and
-marker spelling* changes -- and it has to change consistently within a file: a file that
+marker spelling* changes -- and it has to change consistently within a file. A file that
 still says `import pytest` needs `--pytest-compat` running for its `@pytest.mark.django_db`
-to be recognized at all (see Option A above); mixing an unrewritten `import pytest` file
+to be recognized at all (see Option A above). Mixing an unrewritten `import pytest` file
 into a run *without* `--pytest-compat` means its marks are silently invisible, and any test
 needing database access fails with `Database access not allowed, use the django_db mark,
 or the db or transactional_db fixtures to enable it.` -- worth knowing so it doesn't look

@@ -18,73 +18,44 @@ jobs:
           enable-cache: true
       - run: uv sync
       - run: uv run pre-commit run --all-files
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v10.1.0
+        with:
+          enable-cache: true
+      - run: uv sync
       - run: uv run ty check src
   test:
-    needs: lint
+    needs: [lint, typecheck]
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - python-version: "3.10"
-            django-version: "4.2"
-          - python-version: "3.12"
-            django-version: "4.2"
-          - python-version: "3.13"
-            django-version: "4.2"
-          - python-version: "3.12"
-            django-version: "5.2"
-          - python-version: "3.13"
-            django-version: "5.2"
-          - python-version: "3.12"
-            django-version: "6.1"
-          - python-version: "3.13"
-            django-version: "6.1"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v10.1.0
-        with:
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-      - run: uv sync --python ${{ matrix.python-version }}
-      - name: Pin Django ${{ matrix.django-version }}
-        run: uv pip install "django==${{ matrix.django-version }}.*"
-      - run: uv run rustest tests --color=never
-  test-postgres:
-    needs: lint
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - python-version: "3.10"
-            django-version: "4.2"
-          - python-version: "3.12"
-            django-version: "4.2"
-          - python-version: "3.13"
-            django-version: "4.2"
-          - python-version: "3.12"
-            django-version: "5.2"
-          - python-version: "3.13"
-            django-version: "5.2"
-          - python-version: "3.12"
-            django-version: "6.1"
-          - python-version: "3.13"
-            django-version: "6.1"
+        db-backend: [sqlite, postgres]
+        pyver:
+          - {python: "3.10", django: "4.2"}
+          - {python: "3.12", django: "4.2"}
+          - {python: "3.13", django: "4.2"}
+          - {python: "3.12", django: "5.2"}
+          - {python: "3.13", django: "5.2"}
+          - {python: "3.12", django: "6.1"}
+          - {python: "3.13", django: "6.1"}
     env:
-      TEST_DB_BACKEND: postgres
+      TEST_DB_BACKEND: ${{ matrix.db-backend }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v10.1.0
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
-      - run: uv sync --python ${{ matrix.python-version }}
-      - name: Pin Django ${{ matrix.django-version }}
-        run: uv pip install "django==${{ matrix.django-version }}.*"
+          python-version: ${{ matrix.pyver.python }}
+      - run: uv sync --python ${{ matrix.pyver.python }} --no-install-package django
+      - name: Pin Django ${{ matrix.pyver.django }}
+        run: uv pip install "django==${{ matrix.pyver.django }}.*"
       - run: uv run rustest tests --color=never
   parity:
-    needs: lint
+    needs: [lint, typecheck]
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -269,7 +240,7 @@ jobs:
         with:
           enable-cache: true
           python-version: ${{ matrix.python-version }}
-      - run: uv sync --python ${{ matrix.python-version }}
+      - run: uv sync --python ${{ matrix.python-version }} --no-install-package django
       - name: Pin Django ${{ matrix.django-version }}
         run: uv pip install "django==${{ matrix.django-version }}.*"
       - name: Run under pytest
@@ -279,7 +250,7 @@ jobs:
       - name: Compare outcomes
         run: uv run python ../compare_outcomes.py pytest.xml rustest.jsonl
   docs:
-    needs: lint
+    needs: [lint, typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -289,7 +260,7 @@ jobs:
       - run: uv sync --group docs
       - run: uv run mkdocs build --strict
   build:
-    needs: [test, test-postgres, parity]
+    needs: [test, parity]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -1,80 +1,37 @@
-import os
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
-from rustest import FixtureRequest, fixture
+from _helpers import run_rustest
+from rustest import FixtureRequest, parametrize, raises
 
 
-@fixture
-def _live_server_error(request: FixtureRequest):
-    try:
-        request.getfixturevalue("live_server")
-    except RuntimeError as exc:
-        return exc
-    return None
-
-
-@fixture
-def _django_db_serialized_rollback_error(request: FixtureRequest):
-    try:
-        request.getfixturevalue("django_db_serialized_rollback")
-    except RuntimeError as exc:
-        return exc
-    return None
-
-
-@fixture
-def _django_isolated_apps_error(request: FixtureRequest):
-    try:
-        request.getfixturevalue("django_isolated_apps")
-    except RuntimeError as exc:
-        return exc
-    return None
-
-
-def test_live_server_is_unsupported(_live_server_error) -> None:
-    assert _live_server_error is not None
-    message = str(_live_server_error)
-    assert message.startswith("rustest-django: ")
-    assert "live_server" in message
-    assert "unsupported in rustest-django v1" in message
-
-
-def test_django_db_serialized_rollback_fixture_is_unsupported(
-    _django_db_serialized_rollback_error,
+@parametrize(
+    "fixture_name,expected_snippets",
+    [
+        ("live_server", ("live_server", "unsupported in rustest-django v1")),
+        (
+            "django_db_serialized_rollback",
+            ("django_db_serialized_rollback", "try db instead"),
+        ),
+        ("django_isolated_apps", ("django_isolated_apps",)),
+    ],
+)
+def test_unsupported_fixture_fails_loudly(
+    request: FixtureRequest, fixture_name: str, expected_snippets: tuple[str, ...]
 ) -> None:
-    assert _django_db_serialized_rollback_error is not None
-    message = str(_django_db_serialized_rollback_error)
+    with raises(RuntimeError) as exc_info:
+        request.getfixturevalue(fixture_name)
+
+    message = str(exc_info.value)
     assert message.startswith("rustest-django: ")
-    assert "django_db_serialized_rollback" in message
-    assert "try db instead" in message
+    for snippet in expected_snippets:
+        assert snippet in message
 
 
-def test_django_isolated_apps_is_unsupported(_django_isolated_apps_error) -> None:
-    assert _django_isolated_apps_error is not None
-    message = str(_django_isolated_apps_error)
-    assert message.startswith("rustest-django: ")
-    assert "django_isolated_apps" in message
-
-
-def _run_rustest(project_dir: Path) -> subprocess.CompletedProcess:
-    # A wide COLUMNS keeps rustest's own output renderer from hard-wrapping
-    # long error messages mid-word, which would break substring assertions.
-    return subprocess.run(
-        [sys.executable, "-m", "rustest", "--color=never", str(project_dir)],
-        cwd=project_dir,
-        capture_output=True,
-        text=True,
-        env={**os.environ, "COLUMNS": "300"},
-    )
-
-
-def test_urls_marker_is_unsupported(tmp_path: Path) -> None:
-    (tmp_path / "conftest.py").write_text('rustest_fixtures = ["rustest_django"]\n')
-    (tmp_path / "test_consumer.py").write_text(
-        textwrap.dedent(
+@parametrize(
+    "marker_snippet,extra_assertion",
+    [
+        (
             """
             from rustest import mark
 
@@ -82,23 +39,10 @@ def test_urls_marker_is_unsupported(tmp_path: Path) -> None:
             @mark.urls("some.urls.module")
             def test_uses_urls_marker():
                 assert True
-            """
-        )
-    )
-
-    result = _run_rustest(tmp_path)
-
-    assert result.returncode != 0, result.stdout + result.stderr
-    assert "1 failed" in result.stderr
-    assert "rustest-django: " in result.stderr
-    assert "unsupported in rustest-django v1" in result.stderr
-    assert "Override settings.ROOT_URLCONF via the settings fixture" in result.stderr
-
-
-def test_ignore_template_errors_marker_is_unsupported(tmp_path: Path) -> None:
-    (tmp_path / "conftest.py").write_text('rustest_fixtures = ["rustest_django"]\n')
-    (tmp_path / "test_consumer.py").write_text(
-        textwrap.dedent(
+            """,
+            "Override settings.ROOT_URLCONF via the settings fixture",
+        ),
+        (
             """
             from rustest import mark
 
@@ -106,13 +50,22 @@ def test_ignore_template_errors_marker_is_unsupported(tmp_path: Path) -> None:
             @mark.ignore_template_errors
             def test_uses_ignore_template_errors_marker():
                 assert True
-            """
-        )
-    )
+            """,
+            None,
+        ),
+    ],
+)
+def test_unsupported_marker_fails_loudly(
+    tmp_path: Path, marker_snippet: str, extra_assertion: str | None
+) -> None:
+    (tmp_path / "conftest.py").write_text('rustest_fixtures = ["rustest_django"]\n')
+    (tmp_path / "test_consumer.py").write_text(textwrap.dedent(marker_snippet))
 
-    result = _run_rustest(tmp_path)
+    result = run_rustest(tmp_path)
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "1 failed" in result.stderr
     assert "rustest-django: " in result.stderr
     assert "unsupported in rustest-django v1" in result.stderr
+    if extra_assertion is not None:
+        assert extra_assertion in result.stderr
