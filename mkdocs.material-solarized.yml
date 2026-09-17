@@ -1,0 +1,45 @@
+site_name: rustest-django
+site_description: Django integration for rustest, a port of pytest-django.
+site_url: https://rustest-django.readthedocs.io/
+repo_url: https://github.com/ernestomancebo/rustest-django
+repo_name: ernestomancebo/rustest-django
+docs_dir: site-docs
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: solarized-light
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: solarized-dark
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  features:
+    - content.code.copy
+extra_css:
+  - stylesheets/solarized-dark.css
+  - stylesheets/solarized-light.css
+plugins:
+  - search
+markdown_extensions:
+  - admonition
+  - meta
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.highlight
+  - tables
+  - toc:
+      permalink: true
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Migration Guide: migration-guide.md
+  - Reference:
+      - Fixtures: reference/fixtures.md
+      - Markers: reference/markers.md
+      - Configuration: reference/configuration.md
+      - Unsupported features: reference/unsupported.md
+strict: true
