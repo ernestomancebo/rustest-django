@@ -31,12 +31,26 @@ migrations = false
 | — | `RUSTEST_DJANGO_CREATE_DB` | `false` | Force-recreate the test database even if `reuse_db` would otherwise reuse it. Env-var only, no `pyproject.toml` key. |
 | `migrations` | `RUSTEST_DJANGO_MIGRATIONS` | `true` | Run Django migrations when building the test database. Set `false` to build the schema directly from models instead (faster, but skips migration correctness checks). |
 | `find_project` | `RUSTEST_DJANGO_FIND_PROJECT` | `true` | Search parent directories for a `manage.py` and add its directory to `sys.path`, so `myproject.settings` resolves without extra path configuration. Falls back to `[tool.pytest.ini_options] django_find_project` if unset. |
-| `debug_mode` | `RUSTEST_DJANGO_DEBUG_MODE` | `"false"` | Value applied to Django's `DEBUG` setting for the duration of the test run. |
+| `debug_mode` | `RUSTEST_DJANGO_DEBUG_MODE` | `"false"` | One of `"true"`, `"false"`, `"keep"` -- see below. |
 
 ## Boolean values
 
-Boolean env vars accept `1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off` (case-insensitive).
-Anything else fails fast with a `rustest-django: ...` error naming the accepted spellings.
+`reuse_db`, `migrations`, and `find_project` accept `1`/`true`/`yes`/`on` or
+`0`/`false`/`no`/`off` (case-insensitive). Anything else fails fast with a
+`rustest-django: ...` error naming the accepted spellings.
+
+## `debug_mode` values
+
+Unlike the boolean keys above, `debug_mode` is a three-valued string, not a boolean --
+writing it as a TOML boolean (`debug_mode = true`) fails fast rather than being
+silently misinterpreted:
+
+- `"true"` -- force Django's `DEBUG` setting on for the duration of the test run.
+- `"false"` (default) -- force it off.
+- `"keep"` -- leave `DEBUG` as your settings module set it.
+
+Case-insensitive; any other value fails fast with a `rustest-django: ...` error naming
+the three accepted values.
 
 ## Invalid configuration
 

@@ -68,6 +68,50 @@ def test_env_var_sets_debug_mode(tmp_path: Path, monkeypatch) -> None:
     assert config.debug_mode == "keep"
 
 
+def test_debug_mode_is_case_insensitive(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("RUSTEST_DJANGO_DEBUG_MODE", "TRUE")
+
+    config = resolve_config(tmp_path)
+
+    assert config.debug_mode == "true"
+
+
+def test_invalid_debug_mode_value_fails_fast(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setenv("RUSTEST_DJANGO_DEBUG_MODE", "yes")
+
+    with raises(ConfigError, match=r"^rustest-django: ") as exc_info:
+        resolve_config(tmp_path)
+    assert "true, false, keep" in str(exc_info.value)
+
+
+def test_debug_mode_toml_boolean_fails_fast(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("RUSTEST_DJANGO_DEBUG_MODE", raising=False)
+    (tmp_path / "pyproject.toml").write_text(
+        """
+        [tool.rustest-django]
+        debug_mode = true
+        """
+    )
+
+    with raises(ConfigError, match=r"^rustest-django: ") as exc_info:
+        resolve_config(tmp_path)
+    assert "true, false, keep" in str(exc_info.value)
+
+
+def test_pyproject_debug_mode_string_is_accepted(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.delenv("RUSTEST_DJANGO_DEBUG_MODE", raising=False)
+    (tmp_path / "pyproject.toml").write_text(
+        """
+        [tool.rustest-django]
+        debug_mode = "keep"
+        """
+    )
+
+    config = resolve_config(tmp_path)
+
+    assert config.debug_mode == "keep"
+
+
 def test_pyproject_tool_section_sets_defaults(tmp_path: Path, monkeypatch) -> None:
     for key in ("DJANGO_SETTINGS_MODULE", "RUSTEST_DJANGO_REUSE_DB"):
         monkeypatch.delenv(key, raising=False)
