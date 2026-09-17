@@ -1,20 +1,7 @@
-import os
-import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
-
-def _run_rustest(project_dir: Path) -> subprocess.CompletedProcess:
-    # A wide COLUMNS keeps rustest's own output renderer from hard-wrapping
-    # long error messages mid-word, which would break substring assertions.
-    return subprocess.run(
-        [sys.executable, "-m", "rustest", "--color=never", str(project_dir)],
-        cwd=project_dir,
-        capture_output=True,
-        text=True,
-        env={**os.environ, "COLUMNS": "300"},
-    )
+from _helpers import run_rustest
 
 
 def test_unittest_style_testcase_fails_loudly(tmp_path: Path) -> None:
@@ -50,7 +37,7 @@ def test_unittest_style_testcase_fails_loudly(tmp_path: Path) -> None:
         )
     )
 
-    result = _run_rustest(tmp_path)
+    result = run_rustest(tmp_path)
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "1 failed" in result.stderr
@@ -66,7 +53,7 @@ def test_plain_function_test_is_unaffected(tmp_path: Path) -> None:
         "def test_plain_math():\n    assert 1 + 1 == 2\n"
     )
 
-    result = _run_rustest(tmp_path)
+    result = run_rustest(tmp_path)
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "1 passed" in result.stderr
