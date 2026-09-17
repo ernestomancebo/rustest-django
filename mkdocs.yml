@@ -5,11 +5,25 @@ repo_url: https://github.com/ernestomancebo/rustest-django
 repo_name: ernestomancebo/rustest-django
 docs_dir: site-docs
 theme:
-  name: zettelkasten
-  color_scheme: solarized
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: solarized-light
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: solarized-dark
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+  features:
+    - content.code.copy
+extra_css:
+  - stylesheets/solarized-dark.css
+  - stylesheets/solarized-light.css
 plugins:
   - search
-  - zettelkasten
 markdown_extensions:
   - admonition
   - meta

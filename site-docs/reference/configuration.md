@@ -1,9 +1,3 @@
----
-id: 20260916090400
-title: Configuration
-tags: [reference]
----
-
 # Configuration
 
 Every setting can be given three ways, in this precedence order (highest wins):

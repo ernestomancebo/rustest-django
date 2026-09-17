@@ -1,9 +1,3 @@
----
-id: 20260916090200
-title: Fixtures
-tags: [reference]
----
-
 # Fixtures
 
 Every fixture below is looked up by name, exactly like pytest-django -- request it as a

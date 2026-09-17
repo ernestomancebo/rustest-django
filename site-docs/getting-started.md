@@ -1,9 +1,3 @@
----
-id: 20260916090000
-title: Getting Started
-tags: [guide]
----
-
 # Getting Started
 
 ## Install
