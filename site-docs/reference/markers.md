@@ -22,8 +22,11 @@ mark -- unknown kwargs raise `TypeError`.
 - `databases=[...]` grants access to additional databases beyond `default`, for
   multi-database projects.
 - `reset_sequences=True` behaves like `django_db_reset_sequences`.
-- `serialized_rollback=True` is accepted for signature compatibility but has no effect in
-  rustest-django v1 -- see [Unsupported features](unsupported.md).
+- `serialized_rollback=True` passes straight through to Django's `TestCase` machinery, same
+  as pytest-django -- meaningful together with `transaction=True`, since it's the
+  non-atomic (`TransactionTestCase`-based) path that restores serialized data after
+  truncating tables. This is distinct from the separate `django_db_serialized_rollback`
+  *fixture*, which is unsupported -- see [Unsupported features](unsupported.md).
 
 Applying the mark is equivalent to requesting the `db` fixture (or `transactional_db`,
 etc., depending on kwargs) -- you don't need both.
