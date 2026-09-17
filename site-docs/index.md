@@ -44,6 +44,22 @@ That's the whole integration surface -- one line in `conftest.py`. From there:
   [markers](reference/markers.md), [configuration](reference/configuration.md), and
   [unsupported features](reference/unsupported.md) in detail.
 
+## Docs versions
+
+This site is versioned by Read the Docs:
+
+- **stable** (the default) tracks the latest tagged PyPI release -- what
+  `pip install rustest-django` actually gives you.
+- **latest** tracks the `main` branch, including unreleased changes.
+
+Switch versions from the flyout menu in the corner of the page, or jump directly:
+[stable](https://rustest-django.readthedocs.io/en/stable/) /
+[latest](https://rustest-django.readthedocs.io/en/latest/).
+
+The project is pre-1.0 with independent SemVer, so breaking changes can land between
+releases -- check the [GitHub Releases](https://github.com/ernestomancebo/rustest-django/releases)
+changelog before upgrading.
+
 ## Why rustest-django exists
 
 rustest is a from-scratch Python test runner, not a pytest plugin host -- it has no
