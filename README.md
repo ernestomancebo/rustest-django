@@ -1,5 +1,7 @@
 # rustest-django
 
+[![Docs](https://readthedocs.org/projects/rustest-django/badge/?version=latest)](https://rustest-django.readthedocs.io/en/latest/)
+
 Django integration for [rustest](https://github.com/apex-engineers-inc/rustest): a port of
 [pytest-django](https://github.com/pytest-dev/pytest-django) exposed as a rustest fixture module.
 
@@ -17,7 +19,7 @@ unittest-style and unsupported-feature guards, `rustest_django.asserts`, and the
 The full design is written up in [`docs/spec.md`](docs/spec.md), which links out to a
 section per topic (configuration, DB isolation, the public API, async support, testing
 and CI). It's a locked spec, not a proposal: every section there describes what's
-actually built, not a plan.
+actually built, not a plan. Rendered docs: <https://rustest-django.readthedocs.io/en/latest/>.
 
 ## Using it
 
