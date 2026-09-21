@@ -57,12 +57,14 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   [rustest#143](https://github.com/apex-engineers-inc/rustest/issues/143) — class-level
   marks and module-level `pytestmark` don't propagate to methods at all. Fix: replace the
   class-level `@mark.django_db(...)` with the `rustest_django.django_db` class decorator
-  (full recipe in `rustest-django-migrate-tests`'s "Class-mark gotcha," step 2 — same file
+  (full recipe in `rustest-django-migrate-tests`'s "Class-mark gotcha," step 3 — same file
   linked above if it's not installed alongside this skill), or mark each method
   individually.
 - **Unrewritten `pytest_django` import**: `from pytest_django.asserts import ...` raises
   `ImportError`. `--pytest-compat` only shims the `pytest` module, never `pytest_django`.
-  Fix: rewrite to `from rustest_django.asserts import ...`.
+  Fix: rewrite to `from rustest_django.asserts import ...` (this is exactly
+  `rustest-django-migrate-tests`'s step 1, the base migration — same file linked above if
+  it's not installed alongside this skill).
 - **`unittest.SkipTest` reported as a failure, not a skip**: a test using
   `self.skipTest(...)` or a Django skip decorator (`skipIfDBFeature` and friends) shows up
   as failed rather than skipped. This is

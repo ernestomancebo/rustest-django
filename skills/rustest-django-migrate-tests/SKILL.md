@@ -1,9 +1,9 @@
 ---
 name: rustest-django-migrate-tests
-description: Migrate a Django TestCase-based test suite (SimpleTestCase, TestCase, TransactionTestCase, LiveServerTestCase subclasses) to rustest-django's plain-function style. Use when porting a Django/pytest-django project to rustest-django, when a repo already using rustest-django still has unittest-style Django test classes, or when rustest-django reports its unittest-style guard failure ("unittest-style tests are unsupported").
+description: Migrate a Django/pytest-django test suite to rustest-django — the base pytest_django-to-rustest_django module re-referencing, and the TestCase-family rewrite (SimpleTestCase, TestCase, TransactionTestCase, LiveServerTestCase subclasses) where present. Use when porting a Django/pytest-django project to rustest-django, when a repo already using rustest-django still has unittest-style Django test classes, or when rustest-django reports its unittest-style guard failure ("unittest-style tests are unsupported").
 ---
 
-# Migrate TestCase to rustest-django
+# Migrate a pytest-django suite to rustest-django
 
 rustest runs a `unittest.TestCase` method but discards its `TestResult`, so a failing
 assertion inside one would otherwise be silently reported as passed. rustest-django
@@ -13,25 +13,35 @@ with no opt-out — the decision and its rationale are in
 There is no way to make these classes work as-is: the fix is rewriting them as plain test
 functions.
 
-Before starting: if the target repo hasn't done the base migration yet (swapped
-`pytest_django` for `rustest_django` in `conftest.py`, decided `--pytest-compat` vs.
-rewritten imports), do that first per
-[`migration-guide.md`](https://raw.githubusercontent.com/ernestomancebo/rustest-django/main/site-docs/migration-guide.md).
-This skill only covers the `TestCase`-family rewrite, not the base name-swap.
+## 1. Do the base pytest-django migration first (skip if already done)
 
-## 1. Find every affected class
+Get the target repo running under rustest-django at all, before touching any
+`TestCase`-family class: swap `pytest_plugins = ["pytest_django"]` for
+`rustest_fixtures = ["rustest_django"]` in `conftest.py`, and decide per file whether to
+keep `import pytest` (running with `--pytest-compat`) or rewrite to
+`from rustest import mark`. Either way, rewrite `pytest_django`'s own imports
+unconditionally (`from pytest_django.asserts import ...` →
+`from rustest_django.asserts import ...`) — `--pytest-compat` only shims the `pytest`
+module, never `pytest_django`. Full worked example and rationale in
+[`migration-guide.md`](https://raw.githubusercontent.com/ernestomancebo/rustest-django/main/site-docs/migration-guide.md).
+
+**Done when**: `conftest.py` is updated, every test file's import style is a deliberate
+choice rather than an accident of what was already there, and no file still imports
+directly from `pytest_django`.
+
+## 2. Find every affected class
 
 Search the target repo's test files for classes subclassing `django.test.SimpleTestCase`,
 `TestCase`, `TransactionTestCase`, or `LiveServerTestCase` (directly, or via a project's
 own mixin that subclasses one of them). `unittest.TestCase` on its own, with no Django
 subclass in its bases, is not affected — leave those alone.
 
-**Done when**: you have the full list of affected classes and their methods, ready to
-tell the human "N classes, M methods" before touching anything. Report the list before
-rewriting if the count is large enough that a wrong scope call would be expensive to
-undo.
+**Done when**: you have the full list of affected classes and their methods. Report it to
+the human as "N classes, M methods" before touching anything, regardless of how small
+that count is — visibility into scope is the point, not just a safety valve for large
+migrations.
 
-## 2. Rewrite class attributes to marker kwargs
+## 3. Rewrite class attributes to marker kwargs
 
 Django `TestCase` class attributes map straight onto `@mark.django_db(...)` (from
 `rustest.mark`, or `pytest.mark` under `--pytest-compat`; full kwarg reference in
@@ -64,7 +74,7 @@ class TestSomething:
     def test_one(self): ...
 ```
 
-## 3. Rewrite the test bodies
+## 4. Rewrite the test bodies
 
 - `self.assertX(...)` → import the same name as a module-level function from
   `rustest_django.asserts` (`from rustest_django.asserts import assertContains`) and call
@@ -81,7 +91,7 @@ class TestSomething:
 **Done when**: every method of the class compiles as a standalone function using only
 fixtures and module-level asserts — no remaining reference to `self`.
 
-## 4. Flag the gaps — do not silently "handle" these
+## 5. Flag the gaps — do not silently "handle" these
 
 These `TestCase` features have no confirmed rustest-django equivalent. Don't invent one;
 tell the human what you found and let them decide:
