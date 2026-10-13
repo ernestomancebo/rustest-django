@@ -76,9 +76,16 @@ class TestSomething:
 
 ## 4. Rewrite the test bodies
 
-- `self.assertX(...)` → import the same name as a module-level function from
-  `rustest_django.asserts` (`from rustest_django.asserts import assertContains`) and call
-  it positionally (`assertContains(response, "x")`), dropping `self`.
+- Django-specific assertions such as `self.assertContains(...)` → import the exported
+  module-level helper from `rustest_django.asserts` and drop `self`:
+  `assertContains(response, "x")`. Check that the helper is exported before choosing
+  this conversion.
+- Inherited unittest assertions → Python assertions: `self.assertEqual(a, b)` becomes
+  `assert a == b`, `self.assertTrue(value)` becomes `assert value`, and
+  `self.assertFalse(value)` becomes `assert not value`. Preserve any custom failure
+  message. These inherited methods are not exported by `rustest_django.asserts`.
+- `with self.assertRaises(Error): ...` → `with raises(Error): ...`, importing `raises`
+  from `rustest`; retain callable-style checks by moving the call inside the context.
 - `self.client` / `self.async_client` / `self.request_factory` → `client` / `async_client`
   / `rf` fixture parameters on the test function.
 - `self.settings(...)` context manager, or a class-level `@override_settings(...)` →

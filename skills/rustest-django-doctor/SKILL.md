@@ -84,9 +84,12 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   `@mark.ignore_template_errors`) — not a bug, a documented v1 gap; full list and
   rationale in
   [`site-docs/reference/unsupported.md`](https://raw.githubusercontent.com/ernestomancebo/rustest-django/main/site-docs/reference/unsupported.md).
-  Point at the alternative if one exists (e.g. `transactional_db` in place of a vanished
-  `django_db_serialized_rollback`-loaded fixture); say plainly if there isn't one yet
-  (`live_server` has none).
+  Point at the documented alternative if one exists. For `django_db_serialized_rollback`,
+  use `db` when rollback isolation is sufficient: it preserves migration-loaded data
+  between tests. `transactional_db` flushes tables and can delete those rows, so it is
+  not a drop-in replacement. If the test needs real transaction commits or flush
+  isolation, explain that `db` changes those semantics and that data restoration needs
+  an explicit plan. Say plainly when no alternative exists (`live_server` has none).
 - **`rustest --llm` produces no output, or errors on the flag itself**: the target's
   installed rustest predates 0.18.0, where `--llm` shipped (`docs/spec/upstream.md`'s
   "Version target" section). Fix: upgrade rustest, or fall back to reading `--junit-xml`

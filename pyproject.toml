@@ -25,7 +25,7 @@ packages = ["src/rustest_django"]
 source = "vcs"
 
 [dependency-groups]
-dev = ["ruff", "ty", "psycopg[binary]>=3", "pre-commit", "testcontainers[postgres]>=4"]
+dev = ["ruff", "ty", "pytest", "psycopg[binary]>=3", "pre-commit", "testcontainers[postgres]>=4"]
 docs = ["mkdocs", "mkdocs-material"]
 
 [tool.ruff]

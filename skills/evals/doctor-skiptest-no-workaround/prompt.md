@@ -3,18 +3,19 @@ max_turns: 10
 allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
-This test is showing up as FAILED under rustest-django, but it used to pass fine under
-pytest-django:
+After replacing `pytest.mark.django_db` with the native rustest mark, this plain-function
+test is showing up as FAILED under rustest-django. Before the migration, pytest-django
+reported it as skipped:
 
 ```python
-from django.test import TestCase
-from django.test.utils import skipIfDBFeature
+from django.test import skipIfDBFeature
+from rustest import mark
 
 
-class FeatureTests(TestCase):
-    @skipIfDBFeature("supports_json_field")
-    def test_json_fallback_path(self):
-        ...
+@mark.django_db
+@skipIfDBFeature("supports_json_field")
+def test_json_fallback_path():
+    raise AssertionError("This path is only for backends without JSON fields")
 ```
 
 The test database backend does support JSON fields, so under pytest-django this test was

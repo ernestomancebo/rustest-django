@@ -16,7 +16,7 @@ from blog.models import Post
 
 
 @pytest.mark.django_db
-def test_post_created(db):
+def test_post_created():
     Post.objects.create(title="x")
 ```
 
@@ -25,14 +25,16 @@ File B (`tests/test_orders.py`), run as `rustest --pytest-compat tests/`:
 ```python
 from rustest import mark
 
+from blog.models import Post
+
 
 @mark.django_db
 class TestOrders:
     def test_create(self):
-        ...
+        Post.objects.create(title="order")
 
     def test_cancel(self):
-        ...
+        Post.objects.filter(title="order").delete()
 ```
 
 Why is each one failing, and what's the actual fix for each? They're not the same
