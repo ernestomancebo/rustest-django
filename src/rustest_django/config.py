@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import os
 import sys
+from configparser import ConfigParser
+from configparser import Error as IniError
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,6 +20,7 @@ _KNOWN_TOOL_KEYS = {
     "migrations",
     "find_project",
     "debug_mode",
+    "fail_on_template_vars",
 }
 
 _DEBUG_MODE_VALUES = ("true", "false", "keep")
@@ -31,6 +34,7 @@ class ResolvedConfig:
     migrations: bool
     find_project: bool
     debug_mode: str
+    fail_on_template_vars: bool = False
 
 
 def resolve_config(start_dir: Path) -> ResolvedConfig:
@@ -57,23 +61,50 @@ def resolve_config(start_dir: Path) -> ResolvedConfig:
             default=ini.get("django_find_project", True),
         ),
         debug_mode=_debug_mode(project, ini),
+        fail_on_template_vars=_env_bool(
+            "RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS",
+            project,
+            "fail_on_template_vars",
+            default=False,
+        ),
     )
 
 
 def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
     for directory in (start_dir, *start_dir.parents):
+        project, ini = {}, {}
         pyproject = directory / "pyproject.toml"
-        if not pyproject.is_file():
-            continue
-        try:
-            data = tomllib.loads(pyproject.read_text())
-        except tomllib.TOMLDecodeError as error:
-            raise ConfigError(
-                _message(f"{pyproject} is not valid TOML: {error}")
-            ) from error
-        tool = data.get("tool", {})
-        project = tool.get("rustest-django", {})
-        ini = tool.get("pytest", {}).get("ini_options", {})
+        if pyproject.is_file():
+            try:
+                data = tomllib.loads(pyproject.read_text())
+            except tomllib.TOMLDecodeError as error:
+                raise ConfigError(
+                    _message(f"{pyproject} is not valid TOML: {error}")
+                ) from error
+            tool = data.get("tool", {})
+            project = tool.get("rustest-django", {})
+            pytest = tool.get("pytest", {})
+            ini = {key: value for key, value in pytest.items() if key != "ini_options"}
+            if not ini:
+                ini = pytest.get("ini_options", {})
+        for name in ("pytest.ini", ".pytest.ini"):
+            ini_file = directory / name
+            if not ini_file.is_file():
+                continue
+            parser = ConfigParser(interpolation=None)
+            parser.optionxform = str
+            try:
+                parser.read_string(ini_file.read_text())
+                ini = dict(parser["pytest"]) if parser.has_section("pytest") else {}
+                if "django_find_project" in ini:
+                    ini["django_find_project"] = parser.getboolean(
+                        "pytest", "django_find_project"
+                    )
+            except (IniError, ValueError) as error:
+                raise ConfigError(
+                    _message(f"{ini_file} is not valid INI: {error}")
+                ) from error
+            break
         if project or ini:
             unknown = set(project) - _KNOWN_TOOL_KEYS
             if unknown:
@@ -105,7 +136,14 @@ def _env_bool(
             )
         )
     if project_key is not None and project_key in project:
-        return bool(project[project_key])
+        value = project[project_key]
+        if not isinstance(value, bool):
+            raise ConfigError(
+                _message(
+                    f"{project_key}={value!r} must be a TOML boolean (true or false)."
+                )
+            )
+        return value
     return default
 
 
