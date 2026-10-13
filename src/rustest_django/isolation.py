@@ -1,26 +1,31 @@
 from __future__ import annotations
 
+import os
+from contextlib import nullcontext
 from typing import Any
 
 from rustest import FixtureRequest, fixture
 
 from rustest_django import _bootstrap, django_compat
+from rustest_django._errors import _message
 from rustest_django.blocker import DjangoDbBlocker
+from rustest_django.rustest_compat import requested_fixtures
 
 
 class _DjangoDbContext:
-    """Per-test flags, replacing what pytest-django reads off ``request.fixturenames``.
+    """Per-test flags inferred from the requested fixture closure.
 
-    rustest has no fixture-closure introspection, so ``db``/``transactional_db``
-    set flags here instead. They rely on rustest resolving explicit test
-    parameters before autouse fixtures, so `_django_db_isolation` (autouse)
-    always sees the flags by the time it runs.
+    Flag fixtures also record dynamic requests. Repeated requests preserve the
+    established isolation; a late request requiring a stronger mode fails
+    explicitly instead of discarding data created during fixture setup.
     """
 
     def __init__(self) -> None:
         self.requested = False
+        self.live_server = False
         self.transaction = False
         self.reset_sequences = False
+        self.serialized_rollback = False
         self._built = False
 
     def _require_not_built(self, fixture_name: str) -> None:
@@ -32,24 +37,59 @@ class _DjangoDbContext:
             )
 
     def request_db(self) -> None:
+        if self._built and self.requested:
+            return
         self._require_not_built("db")
         self.requested = True
 
     def request_transactional(self) -> None:
+        if self._built and self.transaction:
+            return
         self._require_not_built("transactional_db")
         self.requested = True
         self.transaction = True
 
     def request_reset_sequences(self) -> None:
+        if self._built and self.reset_sequences:
+            return
         self._require_not_built("django_db_reset_sequences")
         self.requested = True
         self.transaction = True
         self.reset_sequences = True
 
+    def request_serialized_rollback(self) -> None:
+        if self._built and self.serialized_rollback:
+            return
+        self._require_not_built("django_db_serialized_rollback")
+        self.requested = True
+        self.serialized_rollback = True
+
 
 @fixture
-def _django_db_context() -> _DjangoDbContext:
-    return _DjangoDbContext()
+def django_db_serialized_rollback(_django_db_context: _DjangoDbContext) -> None:
+    _django_db_context.request_serialized_rollback()
+
+
+@fixture
+def _django_db_context(request: FixtureRequest) -> _DjangoDbContext:
+    context = _DjangoDbContext()
+    names = requested_fixtures(request)
+    context.live_server = "live_server" in names
+    context.transaction = context.live_server or "transactional_db" in names
+    context.reset_sequences = "django_db_reset_sequences" in names
+    context.serialized_rollback = "django_db_serialized_rollback" in names
+    context.requested = bool(
+        names.intersection(
+            {
+                "db",
+                "transactional_db",
+                "django_db_reset_sequences",
+                "django_db_serialized_rollback",
+                "live_server",
+            }
+        )
+    )
+    return context
 
 
 @fixture
@@ -96,23 +136,54 @@ def django_db_use_migrations() -> bool:
     return _resolved("migrations", True)
 
 
-@fixture(scope="session")
-def django_db_modify_db_settings() -> None:
-    pass
+def _suffix_test_databases(suffix: str) -> None:
+    from django.conf import settings
 
-
-@fixture(scope="session")
-def django_db_modify_db_settings_parallel_suffix() -> None:
-    pass
+    for database in settings.DATABASES.values():
+        test_settings = database.get("TEST", {})
+        if test_settings.get("MIRROR"):
+            continue
+        name = test_settings.get("NAME")
+        sqlite = database["ENGINE"] == "django.db.backends.sqlite3"
+        if not name:
+            if sqlite:
+                continue
+            name = f"test_{database['NAME']}"
+        if sqlite and (name == ":memory:" or "mode=memory" in str(name)):
+            continue
+        database.setdefault("TEST", {})["NAME"] = f"{name}_{suffix}"
 
 
 @fixture(scope="session")
 def django_db_modify_db_settings_tox_suffix() -> None:
-    pass
+    suffix = os.environ.get("TOX_PARALLEL_ENV")
+    if suffix:
+        _suffix_test_databases(suffix)
 
 
 @fixture(scope="session")
 def django_db_modify_db_settings_xdist_suffix() -> None:
+    # rustest has no public worker ID. External process launchers can supply
+    # one explicitly; xdist's environment variable is accepted for migration.
+    suffix = os.environ.get("RUSTEST_DJANGO_DB_SUFFIX") or os.environ.get(
+        "PYTEST_XDIST_WORKER"
+    )
+    if suffix:
+        _suffix_test_databases(suffix)
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings_parallel_suffix(
+    django_db_modify_db_settings_tox_suffix: None,
+    django_db_modify_db_settings_xdist_suffix: None,
+) -> None:
+    pass
+
+
+@fixture(scope="session")
+def django_db_modify_db_settings(
+    django_db_modify_db_settings_parallel_suffix: None,
+) -> None:
     pass
 
 
@@ -164,6 +235,22 @@ def django_db_setup(
             teardown_databases(db_cfg, verbosity=0)
 
 
+def _django_db_arguments(
+    transaction: bool = False,
+    reset_sequences: bool = False,
+    databases: list[str] | None = None,
+    serialized_rollback: bool = False,
+    available_apps: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "transaction": transaction,
+        "reset_sequences": reset_sequences,
+        "databases": databases,
+        "serialized_rollback": serialized_rollback,
+        "available_apps": available_apps,
+    }
+
+
 @fixture(autouse=True)
 def _django_db_isolation(
     request: FixtureRequest,
@@ -171,7 +258,14 @@ def _django_db_isolation(
     django_db_blocker: DjangoDbBlocker,
 ):
     marker = request.node.get_closest_marker("django_db")
-    marker_kwargs = marker.kwargs if marker is not None else {}
+    try:
+        marker_kwargs = (
+            _django_db_arguments(*marker.args, **marker.kwargs)
+            if marker is not None
+            else {}
+        )
+    except TypeError as exc:
+        raise TypeError(_message(f"invalid @mark.django_db arguments: {exc}")) from exc
 
     if not _django_db_context.requested and marker is None:
         yield
@@ -182,7 +276,9 @@ def _django_db_isolation(
     _reset_sequences = _django_db_context.reset_sequences or marker_kwargs.get(
         "reset_sequences", False
     )
-    _serialized_rollback = marker_kwargs.get("serialized_rollback", False)
+    _serialized_rollback = _django_db_context.serialized_rollback or marker_kwargs.get(
+        "serialized_rollback", False
+    )
     _databases = marker_kwargs.get("databases")
     _available_apps = marker_kwargs.get("available_apps")
     transactional = (
@@ -201,7 +297,20 @@ def _django_db_isolation(
         )
         test_case = django_compat.pre_setup(test_case_class)
 
+        from django.test.utils import modify_settings
+
+        config = _bootstrap.resolved_config
+        settings_context = (
+            modify_settings(
+                ALLOWED_HOSTS={
+                    "append": getattr(config, "live_server_host", "localhost")
+                }
+            )
+            if _django_db_context.live_server
+            else nullcontext()
+        )
         try:
-            yield
+            with settings_context:
+                yield
         finally:
             django_compat.post_teardown(test_case, test_case_class)
