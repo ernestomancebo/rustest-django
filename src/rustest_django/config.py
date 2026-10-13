@@ -21,9 +21,17 @@ _KNOWN_TOOL_KEYS = {
     "find_project",
     "debug_mode",
     "fail_on_template_vars",
+    "live_server_port",
+    "live_server_host",
+    "configuration",
 }
 
 _DEBUG_MODE_VALUES = ("true", "false", "keep")
+
+
+class _CaseSensitiveConfigParser(ConfigParser):
+    def optionxform(self, optionstr: str) -> str:
+        return optionstr
 
 
 @dataclass(frozen=True)
@@ -35,10 +43,25 @@ class ResolvedConfig:
     find_project: bool
     debug_mode: str
     fail_on_template_vars: bool = False
+    live_server_port: int = 0
+    live_server_host: str = "localhost"
+    configuration: str | None = None
 
 
 def resolve_config(start_dir: Path) -> ResolvedConfig:
     project, ini = _load_pyproject_sections(start_dir)
+    address_host, address_port = "localhost", 0
+    if not (
+        (
+            "RUSTEST_DJANGO_LIVE_SERVER_HOST" in os.environ
+            or "live_server_host" in project
+        )
+        and (
+            "RUSTEST_DJANGO_LIVE_SERVER_PORT" in os.environ
+            or "live_server_port" in project
+        )
+    ):
+        address_host, address_port = _live_server_address()
 
     create_db = _env_bool("RUSTEST_DJANGO_CREATE_DB", project, None, default=False)
     reuse_db = create_db is False and _env_bool(
@@ -46,9 +69,9 @@ def resolve_config(start_dir: Path) -> ResolvedConfig:
     )
 
     return ResolvedConfig(
-        settings_module=os.environ.get("DJANGO_SETTINGS_MODULE")
-        or project.get("settings_module")
-        or ini.get("DJANGO_SETTINGS_MODULE"),
+        settings_module=_string(
+            "DJANGO_SETTINGS_MODULE", project, "settings_module", ini
+        ),
         reuse_db=reuse_db,
         create_db=create_db,
         migrations=_env_bool(
@@ -58,7 +81,9 @@ def resolve_config(start_dir: Path) -> ResolvedConfig:
             "RUSTEST_DJANGO_FIND_PROJECT",
             project,
             "find_project",
-            default=ini.get("django_find_project", True),
+            default=True,
+            ini=ini,
+            ini_key="django_find_project",
         ),
         debug_mode=_debug_mode(project, ini),
         fail_on_template_vars=_env_bool(
@@ -66,13 +91,35 @@ def resolve_config(start_dir: Path) -> ResolvedConfig:
             project,
             "fail_on_template_vars",
             default=False,
+            ini=ini,
+            ini_key="FAIL_INVALID_TEMPLATE_VARS",
+            env_aliases=("FAIL_INVALID_TEMPLATE_VARS",),
         ),
+        live_server_port=_live_server_port(project, default=address_port),
+        live_server_host=_string(
+            "RUSTEST_DJANGO_LIVE_SERVER_HOST",
+            project,
+            "live_server_host",
+            {},
+            default=address_host,
+        )
+        or "localhost",
+        configuration=_string("DJANGO_CONFIGURATION", project, "configuration", ini),
     )
 
 
 def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
+    """Use the nearest directory with native/pytest TOML or an INI file.
+
+    In that directory native TOML defaults coexist with one pytest fallback:
+    pytest.ini, .pytest.ini, then native pytest TOML, then ini_options. An empty
+    INI file or supported TOML table stops the upward search even when empty;
+    unrelated pyproject files do not.
+    """
     for directory in (start_dir, *start_dir.parents):
         project, ini = {}, {}
+        ini_found = False
+        toml_found = False
         pyproject = directory / "pyproject.toml"
         if pyproject.is_file():
             try:
@@ -82,30 +129,41 @@ def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
                     _message(f"{pyproject} is not valid TOML: {error}")
                 ) from error
             tool = data.get("tool", {})
+            if not isinstance(tool, dict):
+                raise ConfigError(_message("tool must be a TOML table."))
+            toml_found = "rustest-django" in tool or "pytest" in tool
             project = tool.get("rustest-django", {})
             pytest = tool.get("pytest", {})
+            for section, value in (
+                ("tool.rustest-django", project),
+                ("tool.pytest", pytest),
+            ):
+                if not isinstance(value, dict):
+                    raise ConfigError(_message(f"{section} must be a TOML table."))
             ini = {key: value for key, value in pytest.items() if key != "ini_options"}
             if not ini:
                 ini = pytest.get("ini_options", {})
+                if not isinstance(ini, dict):
+                    raise ConfigError(
+                        _message("tool.pytest.ini_options must be a TOML table.")
+                    )
         for name in ("pytest.ini", ".pytest.ini"):
             ini_file = directory / name
             if not ini_file.is_file():
                 continue
-            parser = ConfigParser(interpolation=None)
-            parser.optionxform = str
+            ini_found = True
+            parser = _CaseSensitiveConfigParser(interpolation=None)
             try:
                 parser.read_string(ini_file.read_text())
-                ini = dict(parser["pytest"]) if parser.has_section("pytest") else {}
-                if "django_find_project" in ini:
-                    ini["django_find_project"] = parser.getboolean(
-                        "pytest", "django_find_project"
-                    )
+                ini: dict = (
+                    dict(parser["pytest"]) if parser.has_section("pytest") else {}
+                )
             except (IniError, ValueError) as error:
                 raise ConfigError(
                     _message(f"{ini_file} is not valid INI: {error}")
                 ) from error
             break
-        if project or ini:
+        if toml_found or ini_found:
             unknown = set(project) - _KNOWN_TOOL_KEYS
             if unknown:
                 raise ConfigError(
@@ -120,21 +178,19 @@ def _load_pyproject_sections(start_dir: Path) -> tuple[dict, dict]:
 
 
 def _env_bool(
-    env_name: str, project: dict, project_key: str | None, *, default: bool
+    env_name: str,
+    project: dict,
+    project_key: str | None,
+    *,
+    default: bool,
+    ini: dict | None = None,
+    ini_key: str | None = None,
+    env_aliases: tuple[str, ...] = (),
 ) -> bool:
-    raw = os.environ.get(env_name)
-    if raw is not None:
-        normalized = raw.strip().lower()
-        if normalized in ("1", "true", "yes", "on"):
-            return True
-        if normalized in ("0", "false", "no", "off"):
-            return False
-        raise ConfigError(
-            _message(
-                f"{env_name}={raw!r} is not a valid boolean. Use one of: "
-                "1/true/yes/on or 0/false/no/off."
-            )
-        )
+    for name in (env_name, *env_aliases):
+        raw = os.environ.get(name)
+        if raw is not None:
+            return _parse_bool(name, raw)
     if project_key is not None and project_key in project:
         value = project[project_key]
         if not isinstance(value, bool):
@@ -144,7 +200,26 @@ def _env_bool(
                 )
             )
         return value
+    if ini is not None and ini_key is not None and ini_key in ini:
+        return _parse_bool(ini_key, ini[ini_key])
     return default
+
+
+def _parse_bool(name: str, value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("1", "true", "yes", "on"):
+            return True
+        if normalized in ("0", "false", "no", "off"):
+            return False
+    raise ConfigError(
+        _message(
+            f"{name}={value!r} is not a valid boolean. Use one of: "
+            "1/true/yes/on or 0/false/no/off."
+        )
+    )
 
 
 def _debug_mode(project: dict, ini: dict) -> str:
@@ -166,3 +241,62 @@ def _debug_mode(project: dict, ini: dict) -> str:
             f"{', '.join(_DEBUG_MODE_VALUES)}."
         )
     )
+
+
+def _live_server_port(project: dict, *, default: int = 0) -> int:
+    raw = os.environ.get("RUSTEST_DJANGO_LIVE_SERVER_PORT")
+    if raw is not None:
+        try:
+            value = int(raw)
+        except ValueError:
+            value = None
+    else:
+        value = project.get("live_server_port", default)
+    if type(value) is not int or not 0 <= value <= 65535:
+        raise ConfigError(
+            _message(
+                f"live_server_port={raw if raw is not None else value!r} "
+                "must be an integer between 0 and 65535."
+            )
+        )
+    return value
+
+
+def _live_server_address() -> tuple[str, int]:
+    raw = os.environ.get("DJANGO_LIVE_TEST_SERVER_ADDRESS")
+    if raw is None:
+        return "localhost", 0
+    address = raw.strip()
+    host, separator, port = address.partition(":")
+    if host and not any(character.isspace() for character in host):
+        if not separator:
+            return host, 0
+        if port.isdecimal() and 0 <= int(port) <= 65535:
+            return host, int(port)
+    raise ConfigError(
+        _message(
+            f"DJANGO_LIVE_TEST_SERVER_ADDRESS={raw!r} is not a supported address. "
+            "Use host or host:port (0 to 65535); port lists and ranges are unsupported."
+        )
+    )
+
+
+def _string(
+    env_name: str,
+    project: dict,
+    key: str,
+    ini: dict,
+    *,
+    default: str | None = None,
+) -> str | None:
+    if env_name in os.environ:
+        value = os.environ[env_name]
+    elif key in project:
+        value = project[key]
+    elif env_name in ini:
+        value = ini[env_name]
+    else:
+        return default
+    if not isinstance(value, str) or not value.strip():
+        raise ConfigError(_message(f"{key}={value!r} must be a non-empty string."))
+    return value.strip()
