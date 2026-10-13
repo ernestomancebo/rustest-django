@@ -465,3 +465,33 @@ def test_cached_session_server_can_start_in_a_later_test(tmp_path: Path) -> None
     _database_app(tmp_path)
     result = run_rustest(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_failed_browser_setup_removes_file_test_database(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from urllib.request import urlopen
+        from rustest import fixture
+
+        @fixture
+        def broken_browser(live_server):
+            with urlopen(live_server + "/items/", timeout=5) as response:
+                assert response.read() == b""
+            raise RuntimeError("expected browser setup failure")
+
+        def test_browser(broken_browser):
+            raise AssertionError("test body must not run")
+    """,
+    )
+    _database_app(tmp_path)
+    database = tmp_path / "test.sqlite3"
+    with (tmp_path / "settings.py").open("a") as settings:
+        settings.write(
+            f'DATABASES["default"]["TEST"] = {{"NAME": {str(database)!r}}}\n'
+        )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0
+    assert "expected browser setup failure" in result.stderr
+    assert "test body must not run" not in result.stderr
+    assert not database.exists(), "The failed session left its test database behind"
