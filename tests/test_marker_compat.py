@@ -1,3 +1,4 @@
+import re
 import textwrap
 from pathlib import Path
 
@@ -154,3 +155,141 @@ def test_template_error_exemption_preserves_normal_rendering(tmp_path: Path) -> 
     )
     result = run_rustest(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_strict_templates_fail_missing_variables_but_allow_conditionals(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.template import engines
+
+        def test_01_missing_variable():
+            engines["django"].from_string("{{ missing.title }}").render({})
+
+        def test_02_missing_condition_is_allowed():
+            template = engines["django"].from_string(
+                "{% if missing %}present{% else %}absent{% endif %}"
+            )
+            assert template.render({}) == "absent"
+        """,
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.rustest-django]\nfail_on_template_vars = true\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Undefined template variable 'missing.title'" in result.stderr
+    assert "1 passed" in result.stderr
+    assert "1 failed" in result.stderr
+
+
+def test_strict_template_error_reports_file_for_filtered_missing_variable(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.template.loader import render_to_string
+
+        def test_render_broken_template():
+            render_to_string("broken.html", {})
+        """,
+    )
+    (tmp_path / "broken.html").write_text('{{ missing|default:"fallback" }}')
+    with (tmp_path / "conftest.py").open("a") as conftest:
+        conftest.write(
+            "from pathlib import Path\n"
+            'settings.TEMPLATES[0]["DIRS"] = [str(Path(__file__).parent)]\n'
+        )
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.rustest-django]\nfail_on_template_vars = true\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Undefined template variable 'missing'" in result.stderr
+    assert re.search(
+        r"Undefined template variable 'missing' in '[^']*broken\.html'",
+        result.stderr,
+    ), result.stderr
+
+
+def test_template_exemption_rejects_arguments(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import mark
+
+        @mark.ignore_template_errors(enabled=True)
+        def test_invalid_exemption():
+            pass
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "ignore_template_errors does not accept arguments" in result.stderr
+
+
+def test_strict_template_setting_allows_tests_without_django_settings(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "conftest.py").write_text('rustest_fixtures = ["rustest_django"]\n')
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.rustest-django]\nfail_on_template_vars = true\n"
+    )
+    (tmp_path / "test_consumer.py").write_text("def test_plain_python():\n    pass\n")
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_marker_state_is_restored_after_test_and_fixture_failures(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.apps import apps
+        from django.db import models
+        from django.template import engines
+        from django.urls import resolve
+        from rustest import fixture, mark
+
+        @fixture
+        def broken():
+            raise RuntimeError("deliberate fixture failure")
+
+        @mark.django_isolate_apps("django.contrib.contenttypes")
+        @mark.urls("alternate_urls")
+        def test_01_body_fails():
+            class Temporary(models.Model):
+                class Meta:
+                    app_label = "contenttypes"
+            assert False, "deliberate test failure"
+
+        @mark.django_isolate_apps("django.contrib.contenttypes")
+        @mark.urls("alternate_urls")
+        def test_02_fixture_fails(broken):
+            pass
+
+        @mark.ignore_template_errors
+        def test_03_restored():
+            assert resolve("/value/").func(None).content == b"original"
+            class Later(models.Model):
+                class Meta:
+                    app_label = "contenttypes"
+            assert Later._meta.apps is apps
+            template = engines["django"].from_string('{{ missing|default:"fallback" }}')
+            assert template.render({}) == "fallback"
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text("urlpatterns = []\n")
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.rustest-django]\nfail_on_template_vars = true\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "deliberate fixture failure" in result.stderr
+    assert "deliberate test failure" in result.stderr
+    assert "1 passed" in result.stderr
+    assert "2 failed" in result.stderr

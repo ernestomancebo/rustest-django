@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from types import ModuleType
 
 from django.test.utils import isolate_apps
@@ -68,3 +69,62 @@ def _django_set_urlconf(request: FixtureRequest):
         finally:
             clear_url_caches()
             set_urlconf(None)
+
+
+class _InvalidTemplateVariable:
+    def __contains__(self, value: str) -> bool:
+        return value == "%s"
+
+    def __mod__(self, variable) -> str:
+        from django.template import Template
+
+        origin = None
+        frame = inspect.currentframe()
+        try:
+            while frame is not None:
+                template = frame.f_locals.get("self")
+                if isinstance(template, Template):
+                    origin = template.origin or template.name
+                    break
+                frame = frame.f_back
+        finally:
+            del frame
+        detail = f" in '{origin}'" if origin else ""
+        raise RuntimeError(
+            _message(f"Undefined template variable '{variable}'{detail}")
+        )
+
+
+@fixture(autouse=True)
+def _django_template_variables(request: FixtureRequest):
+    from django.conf import settings
+
+    from rustest_django import _bootstrap
+
+    marker = request.node.get_closest_marker("ignore_template_errors")
+    if marker is not None and (marker.args or marker.kwargs):
+        raise ValueError(_message("ignore_template_errors does not accept arguments."))
+    config = _bootstrap.resolved_config
+    if (
+        config is None
+        or not config.fail_on_template_vars
+        or marker is not None
+        or not settings.configured
+    ):
+        yield
+        return
+
+    from django.template import engines
+    from django.template.backends.django import DjangoTemplates
+
+    originals = []
+    try:
+        for backend in engines.all():
+            if isinstance(backend, DjangoTemplates):
+                engine = backend.engine
+                originals.append((engine, engine.string_if_invalid))
+                engine.string_if_invalid = _InvalidTemplateVariable()
+        yield
+    finally:
+        for engine, original in reversed(originals):
+            engine.string_if_invalid = original

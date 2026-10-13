@@ -40,6 +40,7 @@ from rustest_django.mail import (  # noqa: F401
 from rustest_django.markers import (  # noqa: F401
     _django_isolate_apps,
     _django_set_urlconf,
+    _django_template_variables,
     django_isolated_apps,
 )
 from rustest_django.queries import (  # noqa: F401
