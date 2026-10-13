@@ -37,6 +37,11 @@ from rustest_django.mail import (  # noqa: F401
     django_mail_patch_dns,
     mailoutbox,
 )
+from rustest_django.markers import (  # noqa: F401
+    _django_isolate_apps,
+    _django_set_urlconf,
+    django_isolated_apps,
+)
 from rustest_django.queries import (  # noqa: F401
     DjangoAssertNumQueries,
     DjangoCaptureOnCommitCallbacks,
@@ -47,9 +52,7 @@ from rustest_django.queries import (  # noqa: F401
 from rustest_django.settings_fixture import Settings, settings  # noqa: F401
 from rustest_django.unittest_guard import _unittest_style_guard  # noqa: F401
 from rustest_django.unsupported import (  # noqa: F401
-    _unsupported_marker_guard,
     django_db_serialized_rollback,
-    django_isolated_apps,
     live_server,
 )
 

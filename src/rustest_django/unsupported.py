@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rustest import FixtureRequest, fixture
+from rustest import fixture
 
 from rustest_django._errors import _message
 
@@ -29,19 +29,3 @@ def django_db_serialized_rollback() -> None:
         "test, try db instead: it wraps the test in a transaction rather "
         "than truncating tables, so that data survives.",
     )
-
-
-@fixture
-def django_isolated_apps() -> None:
-    _unsupported("django_isolated_apps")
-
-
-@fixture(autouse=True)
-def _unsupported_marker_guard(request: FixtureRequest) -> None:
-    if request.node.get_closest_marker("urls") is not None:
-        _unsupported(
-            "@mark.urls",
-            "Override settings.ROOT_URLCONF via the settings fixture instead.",
-        )
-    if request.node.get_closest_marker("ignore_template_errors") is not None:
-        _unsupported("@mark.ignore_template_errors")
