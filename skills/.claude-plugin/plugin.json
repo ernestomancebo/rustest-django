@@ -1,0 +1,14 @@
+{
+  "name": "rustest-django",
+  "version": "0.1.0",
+  "description": "Migrate a Django TestCase suite to rustest-django, and diagnose rustest-django-specific test failures.",
+  "author": {
+    "name": "Ernesto Mancebo"
+  },
+  "repository": "https://github.com/ernestomancebo/rustest-django",
+  "license": "BSD-3-Clause",
+  "skills": [
+    "./rustest-django-migrate-tests",
+    "./rustest-django-doctor"
+  ]
+}

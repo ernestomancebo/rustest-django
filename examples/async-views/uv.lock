@@ -265,6 +265,7 @@ requires-dist = [
 dev = [
     { name = "pre-commit" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3" },
+    { name = "pytest" },
     { name = "ruff" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4" },
     { name = "ty" },
