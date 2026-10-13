@@ -1,6 +1,6 @@
 # rustest-django
 
-[![Docs](https://readthedocs.org/projects/rustest-django/badge/?version=latest)](https://rustest-django.readthedocs.io/en/latest/)
+[![Docs](https://readthedocs.org/projects/rustest-django/badge/?version=stable)](https://rustest-django.readthedocs.io/en/stable/)
 
 Django integration for [rustest](https://github.com/apex-engineers-inc/rustest): a port of
 [pytest-django](https://github.com/pytest-dev/pytest-django) exposed as a rustest fixture module.
@@ -9,17 +9,24 @@ Goal: existing pytest-django test suites run under rustest with only an import-p
 
 ## Status
 
-v1 is implemented and CI-verified: configuration resolution, the DB isolation engine,
-the fixture-module entry point, the full T1/T2 fixture surface (`client`/`rf`, `admin_*`,
-`settings`, `mailoutbox`, query-assertion helpers, DB lifecycle fixtures), the
+The v1 supported tier is implemented and CI-verified: configuration resolution, the DB
+isolation engine, the fixture-module entry point, T1 core and selected T2 fixtures
+(`client`/`rf`, `admin_*`, `settings`, `mailoutbox`, query-assertion helpers, DB lifecycle fixtures), the
 unittest-style and unsupported-feature guards, `rustest_django.asserts`, and the
-`rustest_django.django_db` class decorator. Not yet released to PyPI — see
-[#23](https://github.com/ernestomancebo/rustest-django/issues/23).
+`rustest_django.django_db` class decorator. The first release,
+[0.0.1](https://pypi.org/project/rustest-django/0.0.1/), is published on PyPI.
+"v1" names the implementation scope; the package uses independent pre-1.0 versions.
 
 The full design is written up in [`docs/spec.md`](docs/spec.md), which links out to a
 section per topic (configuration, DB isolation, the public API, async support, testing
-and CI). It's a locked spec, not a proposal: every section there describes what's
-actually built, not a plan. Rendered docs: <https://rustest-django.readthedocs.io/en/latest/>.
+and CI), with [completed follow-ups and remaining work](docs/spec.md#completed-follow-ups).
+Published-package docs: <https://rustest-django.readthedocs.io/en/stable/>.
+Unreleased `main` docs: <https://rustest-django.readthedocs.io/en/latest/>.
+
+The remaining fixture and marker gaps are listed in
+[Unsupported features](site-docs/reference/unsupported.md). `live_server` is tracked in
+[#25](https://github.com/ernestomancebo/rustest-django/issues/25); the other excluded
+features need separate scope decisions before implementation.
 
 ## Using it
 
@@ -34,8 +41,8 @@ dependencies = ["rustest-django"]
 rustest_fixtures = ["rustest_django"]
 ```
 
-That's the whole integration surface. From there, an existing pytest-django test suite
-runs by swapping `pytest_django` imports for `rustest_django` (see
+That's the whole integration surface. Within the supported tier, an existing
+pytest-django test suite runs by swapping `pytest_django` imports for `rustest_django` (see
 [`docs/spec/api.md`](docs/spec/api.md#name-swap)) and running rustest with
 `--pytest-compat` if any test files still `import pytest` directly.
 

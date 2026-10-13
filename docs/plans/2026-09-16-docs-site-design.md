@@ -3,6 +3,11 @@
 Expands GitHub issue #22 ("Write the consumer migration guide") into a full
 user-facing documentation site, published on readthedocs.io.
 
+Implemented by [PR #33](https://github.com/ernestomancebo/rustest-django/pull/33).
+RTD registration [#31](https://github.com/ernestomancebo/rustest-django/issues/31) is
+complete. Both `stable` and `latest` are built; the remaining default-version setting
+is tracked by [#32](https://github.com/ernestomancebo/rustest-django/issues/32).
+
 ## Tooling & repo layout
 
 - **MkDocs + Material**, added as a new `docs` dependency group in
@@ -40,12 +45,11 @@ user-facing documentation site, published on readthedocs.io.
 - New job in `.github/workflows/ci.yml`: `mkdocs build --strict`, so a
   broken internal link or nav reference fails CI instead of silently
   404ing on the published site.
-- No versioned-docs (RTD's stable/latest multi-version builder) for now
-  -- single default version, matching the project's pre-1.0 independent
-  SemVer stance. Tracked as a separate follow-up issue.
-- Registering the project on readthedocs.org needs a human with an RTD
-  account (import the repo, connect GitHub) -- same shape as the PyPI
-  trusted-publisher step in issue #28. Tracked as a separate issue.
+- The original design deferred versioned docs. `stable` now tracks tagged releases
+  and `latest` tracks `main`; [PR #37](https://github.com/ernestomancebo/rustest-django/pull/37)
+  added the version-policy note. Setting `stable` as RTD's default remains in #32.
+- The project is registered on readthedocs.org; the GitHub import and connection in
+  issue #31 are complete.
 
 ## Migration guide content
 

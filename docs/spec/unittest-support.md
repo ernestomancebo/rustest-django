@@ -27,5 +27,6 @@ A silently-skipped test with a discarded result looks identical to a passing one
 output. Failing loudly is the only outcome that doesn't let a consumer believe a migrated
 suite has parity when it was never actually run.
 
-Exact message text is decided with the rest of the error UX for unsupported features (see
-[the spec's deferred items](../spec.md#deferred)).
+The implemented message uses the `rustest-django: ` prefix, names the affected class,
+and recommends plain functions with `db` / `transactional_db`. See the
+[error-message design](../plans/2026-09-16-error-messages-design.md).

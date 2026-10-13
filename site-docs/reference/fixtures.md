@@ -19,8 +19,9 @@ test parameter, or override it by name from your own `conftest.py`.
 - **`django_db_modify_db_settings`**, **`django_db_modify_db_settings_parallel_suffix`**,
   **`django_db_modify_db_settings_tox_suffix`**, **`django_db_modify_db_settings_xdist_suffix`**
   -- names kept for drop-in compatibility with pytest-django `conftest.py` overrides; the
-  parallel/tox/xdist-suffix variants are no-ops in rustest-django (rustest runs
-  sequentially, so there's no parallel worker to suffix a database name for).
+  parallel/tox/xdist-suffix variants are no-ops in rustest-django: they do not add
+  worker or tox-environment suffixes. `django_db_modify_db_settings` is also empty by
+  default and can be overridden for project-specific setup.
 
 ## Clients and users
 
@@ -61,8 +62,11 @@ Not fixtures, but exported from `rustest_django` directly: `__version__`,
 `DjangoAssertNumQueries`, `DjangoCaptureOnCommitCallbacks`, `Settings`, `DjangoDbBlocker`
 (the underlying types behind `django_assert_num_queries`, `django_capture_on_commit_callbacks`,
 `settings`, and `django_db_blocker`, if you need to reference the type directly).
+The `django_db` class decorator is also exported; see [Markers](markers.md).
 
-`rustest_django.asserts` -- every `assert*` method from Django's `SimpleTestCase`,
+`rustest_django.asserts` -- Django-specific `assert*` methods declared on `SimpleTestCase`,
 `TestCase`, `TransactionTestCase`, `LiveServerTestCase`, and `MessagesTestMixin`, exposed
 as plain module-level functions (e.g. `rustest_django.asserts.assertContains(...)`), for
-suites that used pytest-django's `django_assert_*` import style.
+suites that imported helpers from `pytest_django.asserts`. Inherited unittest methods
+such as `assertEqual`, `assertTrue`, and `assertRaises` are not module exports. Use
+Python assertions or `rustest.raises` when rewriting those calls.

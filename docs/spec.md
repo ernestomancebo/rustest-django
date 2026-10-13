@@ -1,16 +1,20 @@
 # rustest-django v1 spec
 
 Wayfinder map: [ernestomancebo/rustest-django#1](https://github.com/ernestomancebo/rustest-django/issues/1).
-This is the destination: every section below is a locked decision, ready for build
-sessions. Building the library is a separate effort that starts here.
+The map is complete and the supported v1 tier is implemented. The first PyPI release is
+[0.0.1](https://pypi.org/project/rustest-django/0.0.1/); "v1" describes the design scope,
+not a published 1.0 version. The sections below record the implemented decisions and
+the remaining compatibility boundaries.
 
 ## Goals and contract
 
-- **Port, not shim or reimplement**: public surface identical to pytest-django;
-  internals rewritten on rustest primitives.
+- **Port**: preserve pytest-django's public names within the supported tier, with
+  compatibility boundaries documented; internals use rustest primitives.
 - **Compat contract**: a consumer migrates with an import-path swap only
   (`pytest_django` → `rustest_django`, see [Public API § Name
-  swap](./spec/api.md#name-swap)). Unsupported features fail loudly, never silently.
+  swap](./spec/api.md#name-swap)) within the supported tier. Defined unsupported
+  fixtures and guarded markers fail loudly; unhandled marker cases are listed in
+  [Public API § Unsupported names](./spec/api.md#unsupported-names).
 - **Supported tier v1**:
   - **T1** (full): settings, setup, `db`, `transactional_db`, `django_db`, `client`,
     `rf`, `admin_*`, `django_user_model`, `settings`, `mailoutbox`,
@@ -74,12 +78,14 @@ Native async tests, loop-scope constraint, DB-access caveat:
 
 ## Unsupported-feature behaviour
 
-Every unsupported name (fixture, marker, or test style) exists and fails loudly, never
-silently — no test reports a false pass. Enforced at three points: the marker/fixture
+The unsupported fixture stubs, the `urls` and `ignore_template_errors` function-level
+markers, and Django unittest-style tests fail loudly. Enforced at three points: the marker/fixture
 guard in [Public API § Unsupported names](./spec/api.md#unsupported-names), the config
 validation in [Configuration § Failure behaviour](./spec/configuration.md#failure-behaviour),
-and the per-method guard in [Unsupported test styles](./spec/unittest-support.md). Exact
-message text for all three is deferred (see [Deferred](#deferred) below).
+and the per-method guard in [Unsupported test styles](./spec/unittest-support.md).
+Messages use the implemented `rustest-django: ` prefix and include an alternative when
+one exists. The `django_isolate_apps` marker is currently unhandled; it does not receive
+this guard. See [Unsupported names](./spec/api.md#unsupported-names).
 
 ## Example projects and CI
 
@@ -104,16 +110,44 @@ Gaps reported to rustest, workarounds shipped in the meantime:
 
 ## Deferred
 
-Not yet decided; each needs its own follow-up before it can land in a build session, but
-none blocks starting on the sections above:
+These features remain outside the implemented v1 tier. `live_server` has an open
+implementation issue; the other additions need a scope decision and their own follow-up.
+The user-facing [unsupported-feature inventory](../site-docs/reference/unsupported.md)
+describes current behavior and alternatives.
 
 - **`live_server`**: depends on rustest's process/thread model and whether a session
-  fixture can own a server thread cleanly. T2 leftover.
-- **Exact error-message shapes**: for unsupported fixtures/markers, the unittest guard,
-  config validation, and bootstrap failures — today these surface as a stderr traceback
-  plus a collection error, not a designed message.
-- **Consumer migration guide**: contents. Known must-haves: the `--pytest-compat`
-  requirement when tests keep `import pytest`, excluding unittest-style test paths from
-  the rustest run.
-- **Release process**: PyPI trusted publishing, versioning policy relative to
-  pytest-django releases.
+  fixture can own a server thread cleanly. Tracked by
+  [#25](https://github.com/ernestomancebo/rustest-django/issues/25), including its
+  `--liveserver`-equivalent configuration.
+- **Standalone `django_db_serialized_rollback` fixture**: a defined unsupported stub.
+  The `django_db` marker's `serialized_rollback` kwarg is already implemented.
+- **App-registry isolation**: the `django_isolated_apps` fixture is an unsupported stub;
+  the companion `django_isolate_apps` marker is unhandled.
+- **`urls`, `ignore_template_errors`, and `--fail-on-template-vars`**: URL overrides
+  have a `settings`-fixture alternative; template-variable failure instrumentation has
+  no v1 equivalent.
+- **django-configurations and database-name suffixing**: `--dc` / `DJANGO_CONFIGURATION`
+  integration is excluded. The parallel/tox/xdist suffix fixtures retain their names but
+  are no-ops.
+
+The implemented `django_db` marker also has two compatibility gaps: positional values
+are ignored, and unknown kwargs are not rejected. Use the supported keyword arguments;
+matching pytest-django's positional handling and validation requires a code follow-up.
+Configuration also coerces TOML boolean keys without strict type validation; use
+actual TOML booleans as described in the [configuration reference](../site-docs/reference/configuration.md#boolean-values).
+
+## Completed follow-ups
+
+The original map deferred these tasks, which are now implemented:
+
+| Task | Implementation |
+|---|---|
+| Error-message shapes | [Design](plans/2026-09-16-error-messages-design.md) and [PR #30](https://github.com/ernestomancebo/rustest-django/pull/30); shared prefix and alternatives in configuration, bootstrap, fixture, and unittest guards. |
+| Consumer migration guide | [Published guide source](../site-docs/migration-guide.md), delivered with [PR #33](https://github.com/ernestomancebo/rustest-django/pull/33). |
+| Release process and trusted publishing | [Release design](plans/2026-09-16-release-process-design.md), [PR #29](https://github.com/ernestomancebo/rustest-django/pull/29), and completed [publisher registration #28](https://github.com/ernestomancebo/rustest-django/issues/28); release `v0.0.1` is published. |
+| Hosted documentation | [Docs-site design](plans/2026-09-16-docs-site-design.md) and completed [RTD registration #31](https://github.com/ernestomancebo/rustest-django/issues/31); `stable` and `latest` are built. |
+
+Remaining distribution follow-ups are the upstream listing in
+[#26](https://github.com/ernestomancebo/rustest-django/issues/26) and the RTD default-version
+setting in [#32](https://github.com/ernestomancebo/rustest-django/issues/32). Neither blocks
+installing the published package.
