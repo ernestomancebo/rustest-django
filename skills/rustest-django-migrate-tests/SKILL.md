@@ -76,10 +76,12 @@ class TestSomething:
 
 ## 4. Rewrite the test bodies
 
-- Django-specific assertions such as `self.assertContains(...)` → import the exported
-  module-level helper from `rustest_django.asserts` and drop `self`:
-  `assertContains(response, "x")`. Check that the helper is exported before choosing
-  this conversion.
+- Django-specific assertions with documented module-level equivalents, such as
+  `self.assertContains(...)` and `self.assertNotContains(...)` → import the helper from
+  `rustest_django.asserts` and drop `self`: `assertContains(response, "x")`. These two
+  helpers are confirmed public exports, so use their documented signatures directly.
+  For other assertion names, check the package exports when source is available and
+  flag unconfirmed mappings separately; continue the documented conversions above.
 - Inherited unittest assertions → Python assertions: `self.assertEqual(a, b)` becomes
   `assert a == b`, `self.assertTrue(value)` becomes `assert value`, and
   `self.assertFalse(value)` becomes `assert not value`. Preserve any custom failure
