@@ -77,3 +77,30 @@ Cross-version verification exposed an existing unconditional import of Django 5.
 messages assertion mixin on Django 4.2. Assertion exports now follow the installed
 Django version. CI commands use `uv run --no-sync` after matrix pins: a direct probe
 confirmed plain `uv run` replaces a manually pinned Django with the locked version.
+
+The final activation review also checked direct calls between test functions and
+helper-only package imports. Both had consumer CLI reproducers before their fixes.
+The adapter preserves ordinary positional/keyword calls and original globals, and
+only activates within directories declaring the fixture module. Independent review
+reported no outstanding findings at commit `618edb9`.
+
+Package inspection found pre-existing local worktrees in the default source archive.
+The source-distribution target now excludes `.claude`, `prototypes`, and generated
+skill-evaluation reports; the corrected archive retains the library source.
+
+## Final verification
+
+Local runs used Python 3.12.11 with explicitly selected Django versions, without
+resynchronizing version pins:
+
+| Environment | Full suite |
+|---|---|
+| Django 4.2.30 / SQLite | 171 passed |
+| Django 5.2.18 / SQLite | 171 passed |
+| Django 6.1.1 / SQLite | 171 passed |
+| Django 6.1.1 / PostgreSQL 16 | 171 passed |
+
+The independent final review reported no outstanding findings after the direct-call
+and helper-import fixes. New feature and review regressions exercise the agreed
+consumer CLI seam. Class/module marks, Django unittest outcomes, and native automatic
+worker identity remain documented upstream runner boundaries.

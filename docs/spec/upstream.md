@@ -46,3 +46,18 @@ The release prerequisite is satisfied by
 [rustest-django 0.0.1](https://pypi.org/project/rustest-django/0.0.1/).
 The remaining work is an upstream documentation contribution, tracked in
 [#26](https://github.com/ernestomancebo/rustest-django/issues/26).
+
+## Fixture setup ordering adapter
+
+Rustest 0.18 resolves named test fixtures before autouse fixtures. The plugin uses a
+small `marker_activation` adapter at Python's source-module loading boundary to make
+its combined Django context the first runner-managed test dependency. App, URL,
+template, and database policies therefore apply during consumer fixture setup as well
+as the test body, and teardown stays in the runner's fixture lifecycle.
+
+Activation is limited to a public rustest run and directories beneath a conftest that
+declares the Django fixture module. Ordinary pytest runs, helper-only imports, and
+plain sibling test suites retain their behavior. Test metadata, signatures, defaults,
+and ordinary direct calls are preserved. This adapter and `rustest_compat` fixture
+discovery are the places to revisit when upstream exposes an early setup hook and
+fixture-closure metadata.
