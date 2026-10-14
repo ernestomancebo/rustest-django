@@ -66,6 +66,10 @@ into a plain class instead of top-level functions, use the `rustest_django.djang
 class decorator instead — it applies the marker to every `test*` method at
 class-decoration time:
 
+Remove the Django `TestCase` base from every converted class, including grouped
+plain-function tests. The class decorator only marks methods; it never makes a Django
+`TestCase` subclass supported or disables its guard.
+
 ```python
 from rustest_django import django_db
 
@@ -73,6 +77,9 @@ from rustest_django import django_db
 class TestSomething:
     def test_one(self): ...
 ```
+
+The class decorator is a factory: always call it, using `@django_db()` when there
+are no options and `@django_db(transaction=True)` when passing options.
 
 ## 4. Rewrite the test bodies
 
@@ -87,7 +94,9 @@ class TestSomething:
   `self.assertFalse(value)` becomes `assert not value`. Preserve any custom failure
   message. These inherited methods are not exported by `rustest_django.asserts`.
 - `with self.assertRaises(Error): ...` → `with raises(Error): ...`, importing `raises`
-  from `rustest`; retain callable-style checks by moving the call inside the context.
+  from `rustest`; this is a confirmed public export. Retain callable-style checks by
+  moving the call inside the context. `with self.assertRaisesRegex(Error, pattern)`
+  becomes `with raises(Error, match=pattern)`.
 - `self.client` / `self.async_client` / `self.request_factory` → `client` / `async_client`
   / `rf` fixture parameters on the test function.
 - `self.settings(...)` context manager, or a class-level `@override_settings(...)` →
@@ -98,7 +107,52 @@ class TestSomething:
   pulled into a project-local fixture if genuinely shared across many tests.
 
 **Done when**: every method of the class compiles as a standalone function using only
-fixtures and module-level asserts — no remaining reference to `self`.
+fixtures and module-level asserts — no remaining reference to `self`. When asked for
+a runnable rewrite, supply the whole test file with imports and every original check.
+Use the confirmed exports above even when the sandbox cannot inspect installed source;
+state that execution was unavailable separately from the supported conversion.
+
+## Per-test features and project defaults
+
+- Rewrite `LiveServerTestCase` methods to functions requesting `live_server`.
+  `str(live_server)`, `live_server.url`, and `live_server + "/path/"` give its address.
+  Requesting the fixture activates transactional DB access but does not start the
+  HTTP thread. The session server starts only on first address use (`str`, `.url`,
+  or concatenation), rather than when the fixture is requested.
+  Request `django_db_serialized_rollback` as well when data migrations populate rows
+  that must survive earlier transactional flushes. Avoid adding `db` for a server test
+  that needs committed writes visible to the HTTP thread.
+  Fixture parameter order does not select isolation or snapshot restoration; both
+  requests activate the required database setup before the test body runs.
+- Keep function-level `@mark.urls("project.test_urls")` for per-test routes and
+  `@mark.django_isolate_apps("app.module")` with `django_isolated_apps` for an isolated
+  registry. Registry isolation does not create tables or enable database access.
+- Keep strict template checking as a project setting and use argument-free
+  `@mark.ignore_template_errors` only on intentional missing-variable fallback tests.
+  These marker contexts cover consumer fixture setup and restore after failures.
+- Put project defaults in `[tool.rustest-django]`: `settings_module`, `configuration`,
+  `live_server_host`, `live_server_port`, and `fail_on_template_vars`. Port `0` asks
+  the OS for a free port. Native boolean keys use actual TOML booleans. Optional
+  django-configurations support is installed with `rustest-django[configurations]`.
+  `DJANGO_SETTINGS_MODULE` and `DJANGO_CONFIGURATION` override the respective keys.
+  `RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS` overrides strict checking (also accepting
+  `FAIL_INVALID_TEMPLATE_VARS`); `RUSTEST_DJANGO_LIVE_SERVER_HOST` and
+  `RUSTEST_DJANGO_LIVE_SERVER_PORT` override the server address.
+  Environment overrides win over native TOML, then the selected pytest INI/TOML
+  fallback, then built-in defaults. Discovery uses the nearest supported directory,
+  even an empty supported source; within it pytest.ini, .pytest.ini, tool.pytest,
+  then tool.pytest.ini_options
+  select one fallback. Unrelated pyproject files are skipped.
+  See the [configuration reference](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/configuration.md)
+  for accepted keys. Pytest `addopts` and plugin CLI flags are not forwarded;
+  use `reuse_db = true` / `RUSTEST_DJANGO_REUSE_DB=true` for `--reuse-db`, and
+  `migrations = false` / `RUSTEST_DJANGO_MIGRATIONS=false` for `--nomigrations`.
+  `RUSTEST_DJANGO_CREATE_DB=true` forces recreation; this override is environment-only.
+  Per-process DB suffixes require external identities: `TOX_PARALLEL_ENV` adds the tox
+  suffix, then `RUSTEST_DJANGO_DB_SUFFIX` adds a worker suffix (falling back to
+  `PYTEST_XDIST_WORKER`). Both suffixes can apply together; they are not competing
+  fallback sources. Rustest worker IDs are not supplied automatically, and in-memory
+  SQLite/mirrors are excluded from suffixing.
 
 ## 5. Flag the gaps — do not silently "handle" these
 
@@ -121,6 +175,10 @@ tell the human what you found and let them decide:
   [`docs/spec/async.md`](https://github.com/ernestomancebo/rustest-django/blob/main/docs/spec/async.md)),
   with no workaround possible from a fixture. Replace with `rustest.skip()` / `mark.skip`
   directly; don't leave the old skip call in place expecting it to behave.
+  Preserve the original condition: check database features inside the marked test
+  and call native `skip` only when that condition holds. Keep the original body for
+  the other branch. Do not turn a conditional Django skip into an unconditional
+  `mark.skip`, even if the current backend satisfies the condition.
 
 **Done when**: every gap actually present in the class under rewrite has been called out
 by name to the human, even if the rewrite is otherwise complete.

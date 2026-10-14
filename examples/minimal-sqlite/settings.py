@@ -21,3 +21,4 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "urls"
+STATIC_URL = "/static/"

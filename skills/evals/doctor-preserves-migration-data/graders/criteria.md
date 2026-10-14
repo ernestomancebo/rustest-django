@@ -8,7 +8,8 @@ isolation preserves migration-loaded reference data between tests, and explains 
 `transactional_db` flushes the tables and therefore cannot preserve those rows.
 
 FAIL if the response recommends `transactional_db` as a drop-in replacement, claims
-it restores migration data, invents a supported serialized-rollback fixture, or
+it restores migration data, claims the pinned older installation already supports
+the serialized-rollback fixture, or
 recommends reloading rows when the requested rollback alternative is sufficient.
 
 This case also checks that the doctor skill's documented workaround is usable.

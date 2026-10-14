@@ -9,7 +9,7 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any
 
-from django.contrib.messages.test import MessagesTestMixin
+import django
 from django.test import (
     LiveServerTestCase,
     SimpleTestCase,
@@ -17,12 +17,15 @@ from django.test import (
     TransactionTestCase,
 )
 
+if django.VERSION >= (5, 0):
+    from django.contrib.messages.test import MessagesTestMixin
 
-class MessagesTestCase(MessagesTestMixin, TestCase):
-    pass
+    class MessagesTestCase(MessagesTestMixin, TestCase):
+        pass
 
-
-test_case = MessagesTestCase("run")
+    test_case = MessagesTestCase("run")
+else:
+    test_case = TestCase("run")
 
 
 def _wrapper(name: str) -> Callable[..., Any]:
@@ -42,8 +45,11 @@ assertions_names.update(
     {attr for attr in vars(SimpleTestCase) if attr.startswith("assert")},
     {attr for attr in vars(LiveServerTestCase) if attr.startswith("assert")},
     {attr for attr in vars(TransactionTestCase) if attr.startswith("assert")},
-    {attr for attr in vars(MessagesTestMixin) if attr.startswith("assert")},
 )
+if django.VERSION >= (5, 0):
+    assertions_names.update(
+        attr for attr in vars(MessagesTestMixin) if attr.startswith("assert")
+    )
 
 for assert_func in assertions_names:
     globals()[assert_func] = _wrapper(assert_func)

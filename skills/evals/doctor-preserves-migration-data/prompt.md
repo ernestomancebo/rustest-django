@@ -4,7 +4,9 @@ allowed_tools: [Read, Glob, Grep, Skill]
 ---
 
 Use `rustest-django-doctor` to diagnose this migration problem and follow its
-unsupported-fixture replacement advice. Our Django migrations create a USD currency
+legacy-fixture replacement advice. We are pinned to an older rustest-django release
+that predates standalone serialized rollback; upgrading is outside this request.
+Our Django migrations create a USD currency
 row which these tests need:
 
 ```python

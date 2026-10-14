@@ -1,63 +1,110 @@
 # Configuration
 
-Most settings can be given as environment variables or project configuration. The
-precedence order is:
-
-1. An environment variable.
-2. A key under `[tool.rustest-django]` in `pyproject.toml`.
-3. A pytest-compatible fallback under `[tool.pytest.ini_options]`, for three keys only
-   (`settings_module`, `find_project`, `debug_mode`) -- useful if your project already
-   has pytest configuration in `pyproject.toml` and you don't want to duplicate it.
-
-`RUSTEST_DJANGO_CREATE_DB` is environment-only. The fallback names are
-`DJANGO_SETTINGS_MODULE`, `django_find_project`, and `django_debug_mode` in
-`pyproject.toml`; rustest-django does not read `pytest.ini`, `setup.cfg`, or `tox.ini`.
+Project defaults live under `[tool.rustest-django]` in `pyproject.toml`.
+Environment variables override those defaults. Compatible pytest settings provide
+fallbacks for settings discovery, debug mode, project discovery, configuration-class
+selection, and strict template checking.
 
 ```toml
-# pyproject.toml
 [tool.rustest-django]
 settings_module = "myproject.settings"
 reuse_db = true
 migrations = false
+live_server_host = "localhost"
+live_server_port = 0
+fail_on_template_vars = true
 ```
+
+## Discovery and precedence
+
+Search upward from the declaring `conftest.py` directory. The nearest directory with
+supported TOML tables or an INI file wins; unrelated `pyproject.toml` files are skipped.
+An empty supported table or INI file stops discovery instead of inheriting parent
+configuration.
+
+Within that directory, native `[tool.rustest-django]` values coexist with one pytest
+fallback source, selected in this order:
+
+1. `pytest.ini` (`[pytest]`).
+2. `.pytest.ini` (`[pytest]`).
+3. Native pytest TOML settings under `[tool.pytest]`.
+4. INI-style pytest settings under `[tool.pytest.ini_options]`.
+
+Value precedence is environment variable, native project key, selected pytest fallback,
+then the built-in default. `setup.cfg`, `tox.ini`, and `pytest.toml` are not read.
+Pytest `addopts` is not forwarded as rustest command-line arguments.
 
 ## Keys
 
-| Key | Env var | Default | Meaning |
+| Key | Environment variable | Default | Meaning |
 |---|---|---|---|
-| `settings_module` | `DJANGO_SETTINGS_MODULE` | none | Dotted path to your Django settings module. Falls back to `[tool.pytest.ini_options] DJANGO_SETTINGS_MODULE` if unset. |
-| `reuse_db` | `RUSTEST_DJANGO_REUSE_DB` | `false` | Reuse an existing test database between runs instead of recreating it. Forced to `false` if `create_db` is `true`. |
-| — | `RUSTEST_DJANGO_CREATE_DB` | `false` | Force-recreate the test database even if `reuse_db` would otherwise reuse it. Env-var only, no `pyproject.toml` key. |
-| `migrations` | `RUSTEST_DJANGO_MIGRATIONS` | `true` | Run Django migrations when building the test database. Set `false` to build the schema directly from models instead (faster, but skips migration correctness checks). |
-| `find_project` | `RUSTEST_DJANGO_FIND_PROJECT` | `true` | Search parent directories for a `manage.py` and add its directory to `sys.path`, so `myproject.settings` resolves without extra path configuration. Falls back to `[tool.pytest.ini_options] django_find_project` if unset. |
-| `debug_mode` | `RUSTEST_DJANGO_DEBUG_MODE` | `"false"` | One of `"true"`, `"false"`, `"keep"` -- see below. |
+| `settings_module` | `DJANGO_SETTINGS_MODULE` | none | Dotted Django settings module. Pytest fallback: `DJANGO_SETTINGS_MODULE`. |
+| `configuration` | `DJANGO_CONFIGURATION` | none | django-configurations class; requires the optional extra below. Pytest fallback: `DJANGO_CONFIGURATION`. |
+| `reuse_db` | `RUSTEST_DJANGO_REUSE_DB` | `false` | Keep the test database between runs. Cancelled when `create_db` is true. |
+| — | `RUSTEST_DJANGO_CREATE_DB` | `false` | Recreate the test database. Environment-only; no TOML key. |
+| `migrations` | `RUSTEST_DJANGO_MIGRATIONS` | `true` | Run migrations when creating test databases. False builds schema directly from models. |
+| `find_project` | `RUSTEST_DJANGO_FIND_PROJECT` | `true` | Find a parent `manage.py` and add its directory to the import path. Pytest fallback: `django_find_project`. |
+| `debug_mode` | `RUSTEST_DJANGO_DEBUG_MODE` | `"false"` | Force Django DEBUG true/false, or leave it unchanged with `"keep"`. Pytest fallback: `django_debug_mode`. |
+| `live_server_host` | `RUSTEST_DJANGO_LIVE_SERVER_HOST` | `"localhost"` | Host for the live-server fixture. |
+| `live_server_port` | `RUSTEST_DJANGO_LIVE_SERVER_PORT` | `0` | Port from 0 to 65535; 0 asks the operating system for an available port. |
+| `fail_on_template_vars` | `RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS` | `false` | Reject undefined variables rendered by configured Django template backends. Pytest fallback: `FAIL_INVALID_TEMPLATE_VARS`. |
 
 ## Boolean values
 
-The boolean environment variables accept `1`/`true`/`yes`/`on` or
-`0`/`false`/`no`/`off` (case-insensitive). Invalid environment values raise a
-`rustest-django: ...` error naming the accepted spellings.
+Boolean environment variables and pytest fallback values accept
+`1`/`true`/`yes`/`on` or `0`/`false`/`no`/`off`, case-insensitively.
+Native TOML boolean keys require actual `true` or `false` values: quoted strings and
+numbers raise an error instead of being interpreted through truthiness.
 
-In TOML, write `reuse_db`, `migrations`, and `find_project` as actual booleans
-(`true` or `false`), without quotes. These keys currently use Python truthiness
-rather than strict type validation: `migrations = "false"` enables migrations.
-Rejecting wrong TOML types remains a validation follow-up.
+The upstream `FAIL_INVALID_TEMPLATE_VARS` environment variable is also accepted.
+`RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS` takes precedence over that alias; either
+environment value overrides project configuration.
 
-## `debug_mode` values
+Strict template checking is a project policy. Use the
+[`ignore_template_errors` marker](markers.md#markignore_template_errors) for per-test
+exceptions.
 
-Unlike the boolean keys above, `debug_mode` is a three-valued string, not a boolean --
-writing it as a TOML boolean (`debug_mode = true`) fails fast rather than being
-silently misinterpreted:
+## Debug mode
 
-- `"true"` -- force Django's `DEBUG` setting on for the duration of the test run.
-- `"false"` (default) -- force it off.
-- `"keep"` -- leave `DEBUG` as your settings module set it.
+`debug_mode` accepts the strings `"true"`, `"false"`, and `"keep"`, case-insensitively.
+It defaults to `"false"`; `"keep"` preserves the value from Django settings.
+A native TOML boolean such as `debug_mode = true` is invalid.
 
-Case-insensitive; any other value fails fast with a `rustest-django: ...` error naming
-the three accepted values.
+## Live-server address compatibility
+
+`DJANGO_LIVE_TEST_SERVER_ADDRESS` supplies fallback host/port values using `host` or
+`host:port`. Port lists and ranges are rejected. Native host/port keys and their
+`RUSTEST_DJANGO_*` environment variables override the corresponding address components.
+Supplying both components directly bypasses the legacy address entirely.
+
+## django-configurations
+
+Install the optional integration:
+
+```bash
+uv add 'rustest-django[configurations]'
+```
+
+Then select the settings module and class:
+
+```toml
+[tool.rustest-django]
+settings_module = "myproject.settings"
+configuration = "Test"
+```
+
+The importer is installed before Django initializes and before test modules import
+models. Missing optional dependencies produce installation guidance.
+
+## Database suffixes
+
+`TOX_PARALLEL_ENV` adds a tox-environment suffix. `RUSTEST_DJANGO_DB_SUFFIX` adds an
+explicit worker suffix, falling back to `PYTEST_XDIST_WORKER`. Both can apply, in that
+order. These identities come from the process environment and are applied through
+[Django database lifecycle fixtures](fixtures.md#database).
 
 ## Invalid configuration
 
-Unknown keys under `[tool.rustest-django]`, invalid `debug_mode` values, unparsable TOML,
-and invalid boolean environment values raise a `rustest-django: ...` error at startup.
-TOML boolean keys have the type-validation limitation described above.
+Unknown native keys, invalid types, malformed supported configuration, and out-of-range
+ports fail at startup. Plugin configuration errors use the `rustest-django: ` prefix.
+Rustest may report malformed TOML before loading fixture modules.
