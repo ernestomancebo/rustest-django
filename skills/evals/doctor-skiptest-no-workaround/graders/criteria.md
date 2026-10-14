@@ -14,6 +14,10 @@ A successful response:
   rustest gap (rustest#145), not a bug in this test or in rustest-django.
 - Recognizes that this is a plain test function with a native `django_db` mark, so the
   unsupported-`TestCase` guard and the database-access blocker are not the cause.
+  Retaining that native mark on a plain function and correctly attributing the
+  failure to SkipTest demonstrates this recognition. An extra sentence naming the
+  unrelated guard/blocker is not required. Fail if it actually diagnoses either as
+  the cause or removes the needed database access.
 - States plainly that **there is no fixture-level workaround** that restores the old
   skipped-not-run behavior for a Django-style skip decorator under rustest. It does not
   invent a fake fix (e.g. a custom fixture, a try/except, a marker that doesn't exist) to

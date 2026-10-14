@@ -66,6 +66,10 @@ into a plain class instead of top-level functions, use the `rustest_django.djang
 class decorator instead — it applies the marker to every `test*` method at
 class-decoration time:
 
+Remove the Django `TestCase` base from every converted class, including grouped
+plain-function tests. The class decorator only marks methods; it never makes a Django
+`TestCase` subclass supported or disables its guard.
+
 ```python
 from rustest_django import django_db
 
