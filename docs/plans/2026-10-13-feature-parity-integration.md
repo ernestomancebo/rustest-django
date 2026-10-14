@@ -54,3 +54,26 @@ Server and template defaults do not change ordinary tests that do not request th
 - Exercise the supported Django release families and PostgreSQL when available.
 - Ruff, type checks, strict documentation build, and package build pass.
 - Public docs describe implemented behavior and remaining runner boundaries.
+
+## Review findings and follow-up
+
+The first integrated checks passed across Django 4.2, 5.2, and 6.1, with 147 tests
+per SQLite run, followed by a 148-test PostgreSQL run after a cleanup regression
+was added. All three original example suites retained exact pytest/rustest outcomes,
+including the new real HTTP database-visibility case.
+
+Independent review found fixture-discovery cases that required further red/green
+cycles: `usefixtures` marks, consumer overrides, and direct parametrized values.
+The fixes preserve consumer fixture definitions and distinguish values from fixtures.
+A consumer test that named private isolation machinery was replaced by a public
+`admin_user` dependency.
+
+The marker review also found that policies must start before consumer fixture setup.
+The activation adapter addresses this using normal runner-managed fixture lifetime;
+final checks include fixture setup, test/fixture failure cleanup, and dual-runner
+compatibility.
+
+Cross-version verification exposed an existing unconditional import of Django 5.0's
+messages assertion mixin on Django 4.2. Assertion exports now follow the installed
+Django version. CI commands use `uv run --no-sync` after matrix pins: a direct probe
+confirmed plain `uv run` replaces a manually pinned Django with the locked version.

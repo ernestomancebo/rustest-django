@@ -102,7 +102,8 @@ override point for consumer configuration.
 `Settings`, `DjangoDbBlocker`, `django_db` (the class decorator).
 
 `rustest_django.asserts`: Django-specific `assert*` methods declared on `SimpleTestCase`,
-`TestCase`, `TransactionTestCase`, `LiveServerTestCase` and `MessagesTestMixin`, as
+`TestCase`, `TransactionTestCase`, `LiveServerTestCase` and, on Django 5.0+,
+`MessagesTestMixin`, as
 module-level functions, with an `asserts.pyi` stub. Inherited unittest assertions such
 as `assertEqual`, `assertTrue`, and `assertRaises` are not exported; use Python
 assertions and `rustest.raises` when rewriting those calls.

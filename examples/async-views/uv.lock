@@ -269,6 +269,7 @@ dev = [
     { name = "pre-commit" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3" },
     { name = "pytest", specifier = ">=8" },
+    { name = "pytest-asyncio", specifier = ">=0.24" },
     { name = "pytest-django", specifier = ">=4.9" },
     { name = "ruff" },
     { name = "testcontainers", extras = ["postgres"], specifier = ">=4" },

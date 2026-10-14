@@ -11,7 +11,8 @@ Goal: existing pytest-django test suites run under rustest with only an import-p
 
 The v1 supported tier is implemented and CI-verified: configuration resolution, the DB
 isolation engine, the fixture-module entry point, T1 core and selected T2 fixtures
-(`client`/`rf`, `admin_*`, `settings`, `mailoutbox`, query-assertion helpers, DB lifecycle fixtures), the
+(`client`/`rf`, `admin_*`, `settings`, `mailoutbox`, query-assertion helpers, DB lifecycle
+fixtures), the
 unittest-style and unsupported-feature guards, `rustest_django.asserts`, and the
 `rustest_django.django_db` class decorator. The first release,
 [0.0.1](https://pypi.org/project/rustest-django/0.0.1/), is published on PyPI.
@@ -23,10 +24,12 @@ and CI), with [completed follow-ups and remaining work](docs/spec.md#completed-f
 Published-package docs: <https://rustest-django.readthedocs.io/en/stable/>.
 Unreleased `main` docs: <https://rustest-django.readthedocs.io/en/latest/>.
 
-The remaining fixture and marker gaps are listed in
-[Unsupported features](site-docs/reference/unsupported.md). `live_server` is tracked in
-[#25](https://github.com/ernestomancebo/rustest-django/issues/25); the other excluded
-features need separate scope decisions before implementation.
+The current source also implements live server, serialized rollback and app-registry
+isolation, URL/template markers, django-configurations, and database suffixes. Project
+options support native TOML, compatible pytest TOML, and INI fallbacks. See
+[Configuration](site-docs/reference/configuration.md) and the remaining
+[runner boundaries](site-docs/reference/unsupported.md). These additions are unreleased;
+`stable` documents the published package.
 
 ## Using it
 

@@ -21,10 +21,14 @@ spike (wayfinder ticket #8) proved the pattern runs unchanged under rustest.
 - Marker kwargs (`transaction`, `reset_sequences`, `databases`, `serialized_rollback`,
   `available_apps`) pass straight through to class attributes with pytest-django's
   defaults; `reset_sequences=True` forces flush mode.
-- rustest has no `request.fixturenames`, so fixture-requested upgrades
-  (`transactional_db`, `django_db_reset_sequences`, `django_db_serialized_rollback`) set
-  flags on a per-test context that the isolation reads. A flag fixture resolving after
-  isolation is already built raises a clear error instead of silently downgrading.
+- rustest has no `request.fixturenames`. The `rustest_compat` adapter infers the fixture
+  closure from public node metadata, the public fixture registry, and autouse decorator
+  metadata before building isolation. Flag fixtures also record dynamic requests.
+  Repeated requests for an established mode are idempotent; a late request requiring a
+  stronger mode raises rather than rebuilding isolation and discarding setup data.
+- Live-server tests receive transactional access, including through session-scoped
+  browser fixtures. The server belongs to the session; allowed-host overrides and
+  database isolation belong to each test.
 - Test databases are created lazily on the first DB test, for every alias in
   `settings.DATABASES`, and every alias is serialized, matching `manage.py test`.
 - Isolation fixtures wrap `yield` in `try/finally` and re-raise teardown errors, because
