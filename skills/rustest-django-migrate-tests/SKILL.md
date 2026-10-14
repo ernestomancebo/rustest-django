@@ -126,9 +126,14 @@ state that execution was unavailable separately from the supported conversion.
   `live_server_host`, `live_server_port`, and `fail_on_template_vars`. Port `0` asks
   the OS for a free port. Native boolean keys use actual TOML booleans. Optional
   django-configurations support is installed with `rustest-django[configurations]`.
+  `DJANGO_SETTINGS_MODULE` and `DJANGO_CONFIGURATION` override the respective keys.
+  `RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS` overrides strict checking (also accepting
+  `FAIL_INVALID_TEMPLATE_VARS`); `RUSTEST_DJANGO_LIVE_SERVER_HOST` and
+  `RUSTEST_DJANGO_LIVE_SERVER_PORT` override the server address.
   Environment overrides win over native TOML, then the selected pytest INI/TOML
-  fallback. Discovery uses the nearest supported directory, even an empty supported
-  source; within it pytest.ini, .pytest.ini, tool.pytest, then tool.pytest.ini_options
+  fallback, then built-in defaults. Discovery uses the nearest supported directory,
+  even an empty supported source; within it pytest.ini, .pytest.ini, tool.pytest,
+  then tool.pytest.ini_options
   select one fallback. Unrelated pyproject files are skipped.
   See the [configuration reference](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/configuration.md)
   for accepted keys. Pytest `addopts` and plugin CLI flags are not forwarded;
