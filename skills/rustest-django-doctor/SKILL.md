@@ -94,6 +94,28 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   upstream gap with **no workaround possible from a fixture**. Say so plainly — don't
   propose a local fix that doesn't exist; the only real option is
   `rustest.skip()`/`mark.skip` in place of the Django-style skip.
+  The failure is the decorator's `SkipTest`, before the test body runs; do not
+  attribute it to an assertion in that body.
+
+  Preserve conditional skip semantics across backends. Remove the Django decorator,
+  retain the native database mark, and check the same feature inside the test before
+  calling native `skip`. Do not offer an unconditional skip for a conditional test,
+  even when the current backend makes the condition true. An unconditional
+  `mark.skip` is appropriate only for an originally unconditional skip.
+
+  ```python
+  from django.db import connection
+  from rustest import mark, skip
+
+  @mark.django_db
+  def test_json_fallback_path():
+      if connection.features.supports_json_field:
+          skip("Only for backends without JSON field support")
+      raise AssertionError("This path is only for backends without JSON fields")
+  ```
+
+  `skip` is a supported public export. When the feature is false, the original test
+  body still runs; replacing the skip mechanism must not remove those checks.
 - **Flaky/inconsistent DB state on an async test**: a consumer `async def` fixture at
   class, module, or session scope, combined with `db`/`transactional_db`, is an
   unsupported combination (`docs/spec/async.md`'s "Loop scope" section) that runs tests

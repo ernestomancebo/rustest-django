@@ -5,6 +5,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from textwrap import dedent
 
 from rustest import mark
 
@@ -43,10 +44,16 @@ def test_eval_judge_receives_request_constraints_and_public_api(tmp_path: Path) 
 
 
 def _run_example(
-    project: Path, case: str, block: int = 0, *, pytest_compat: bool = False
+    project: Path,
+    case: str,
+    block: int = 0,
+    *,
+    pytest_compat: bool = False,
+    source: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    prompt = (EVALS / case / "prompt.md").read_text()
-    source = re.findall(r"```python\n(.*?)```", prompt, re.DOTALL)[block]
+    if source is None:
+        prompt = (EVALS / case / "prompt.md").read_text()
+        source = re.findall(r"```python\n(.*?)```", prompt, re.DOTALL)[block]
     (project / "conftest.py").write_text('rustest_fixtures = ["rustest_django"]\n')
     (project / "pyproject.toml").write_text(
         '[tool.rustest-django]\nsettings_module = "settings"\n'
@@ -99,6 +106,30 @@ def test_skip_diagnosis_example_fails_with_unittest_skiptest(tmp_path: Path) -> 
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "SkipTest" in result.stderr, result.stdout + result.stderr
+
+
+@mark.parametrize("supports_json", [True, False])
+def test_documented_skip_replacement_preserves_the_backend_condition(
+    tmp_path: Path, supports_json: bool
+) -> None:
+    skill = (EVALS.parent / "rustest-django-doctor" / "SKILL.md").read_text()
+    examples = re.findall(r"```python\n(.*?)```", skill, re.DOTALL)
+    source = dedent(
+        next(example for example in examples if "supports_json_field" in example)
+    )
+    source = (
+        "from django.db import connection as test_backend\n"
+        f"test_backend.features.supports_json_field = {supports_json!r}\n\n" + source
+    )
+    result = _run_example(tmp_path, "doctor-skiptest-no-workaround", source=source)
+    output = result.stdout + result.stderr
+    if supports_json:
+        assert result.returncode == 0, output
+        assert "1 skipped" in output, output
+    else:
+        assert result.returncode != 0, output
+        assert "1 failed" in output, output
+        assert "This path is only for backends without JSON fields" in output, output
 
 
 def test_template_diagnosis_example_fails_on_missing_rendered_variable(

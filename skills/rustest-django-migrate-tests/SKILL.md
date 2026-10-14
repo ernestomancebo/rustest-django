@@ -175,6 +175,10 @@ tell the human what you found and let them decide:
   [`docs/spec/async.md`](https://github.com/ernestomancebo/rustest-django/blob/main/docs/spec/async.md)),
   with no workaround possible from a fixture. Replace with `rustest.skip()` / `mark.skip`
   directly; don't leave the old skip call in place expecting it to behave.
+  Preserve the original condition: check database features inside the marked test
+  and call native `skip` only when that condition holds. Keep the original body for
+  the other branch. Do not turn a conditional Django skip into an unconditional
+  `mark.skip`, even if the current backend satisfies the condition.
 
 **Done when**: every gap actually present in the class under rewrite has been called out
 by name to the human, even if the rewrite is otherwise complete.
