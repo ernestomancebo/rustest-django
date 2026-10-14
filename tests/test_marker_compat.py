@@ -1,4 +1,6 @@
 import re
+import subprocess
+import sys
 import textwrap
 from pathlib import Path
 
@@ -293,3 +295,356 @@ def test_marker_state_is_restored_after_test_and_fixture_failures(
     assert "deliberate test failure" in result.stderr
     assert "1 passed" in result.stderr
     assert "2 failed" in result.stderr
+
+
+def test_app_marker_applies_before_consumer_fixture_setup(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.db import models
+        from rustest import fixture, mark
+
+        @fixture
+        def temporary_model():
+            class Temporary(models.Model):
+                class Meta:
+                    app_label = "contenttypes"
+            return Temporary
+
+        @mark.django_isolate_apps("django.contrib.contenttypes")
+        def test_fixture_model_is_isolated(temporary_model, django_isolated_apps):
+            assert temporary_model._meta.apps is django_isolated_apps
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_urls_marker_applies_before_consumer_http_fixture(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        def test_fixture_uses_selected_routes(response):
+            assert response.content == b"alternate"
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_strict_template_policy_covers_consumer_fixture_setup(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.template import engines
+        from rustest import fixture, mark
+
+        @fixture
+        def rendered():
+            return engines["django"].from_string("{{ missing }}").render({})
+
+        def test_01_strict_fixture(rendered):
+            pass
+
+        @mark.ignore_template_errors
+        def test_02_exempt_fixture(rendered):
+            assert rendered == ""
+
+        def test_03_strict_again(rendered):
+            pass
+        """,
+    )
+    (tmp_path / "pyproject.toml").write_text(
+        "[tool.rustest-django]\nfail_on_template_vars = true\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Undefined template variable 'missing'" in result.stderr
+    assert "1 passed" in result.stderr
+    assert "2 failed" in result.stderr
+
+
+def test_importing_django_assertions_preserves_ordinary_pytest_tests(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "conftest.py").write_text("import rustest_django.asserts\n")
+    (tmp_path / "test_consumer.py").write_text(
+        "def test_pytest_fixture(tmp_path):\n    assert tmp_path.is_dir()\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-m", "pytest", "-q", "--assert=plain", str(tmp_path)],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_preserves_inherited_and_descriptor_tests(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from helpers import Base
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        class TestInherited(Base):
+            pass
+
+        class TestDescriptors:
+            @classmethod
+            @mark.urls("alternate_urls")
+            def test_class_method(cls, response):
+                assert response.content == b"alternate"
+
+            @staticmethod
+            @mark.urls("alternate_urls")
+            def test_static_method(response):
+                assert response.content == b"alternate"
+        """,
+    )
+    (tmp_path / "helpers.py").write_text(
+        textwrap.dedent(
+            """
+            from rustest import mark
+
+            class Base:
+                @mark.urls("alternate_urls")
+                def test_inherited(self, response):
+                    assert response.content == b"alternate"
+            """
+        )
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "3 passed" in result.stderr
+
+
+def test_early_activation_allows_database_access_inside_consumer_fixture(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.contrib.contenttypes.models import ContentType
+        from rustest import fixture, mark
+
+        @fixture
+        def content_type(db):
+            return ContentType.objects.create(app_label="demo", model="fixturetest")
+
+        def test_01_fixture_uses_database(content_type):
+            assert content_type.model == "fixturetest"
+
+        @mark.django_db
+        def test_02_fixture_data_was_rolled_back():
+            assert not ContentType.objects.filter(model="fixturetest").exists()
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_preserves_async_parametrized_tests(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        import asyncio
+        from rustest import fixture, mark, parametrize
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        @parametrize("expected", [b"alternate", b"alternate"])
+        async def test_async_routes(response, expected):
+            await asyncio.sleep(0)
+            assert response.content == expected
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stderr
+
+
+def test_early_activation_preserves_public_mock_patch_decorators(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        import time
+        from unittest.mock import patch
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        @patch("time.time", return_value=123)
+        def test_patched_clock(clock, response):
+            assert time.time() == 123
+            assert response.content == b"alternate"
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_preserves_keyword_only_and_positional_only_arguments(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        def test_keyword_only(*, response):
+            assert response.content == b"alternate"
+
+        @mark.urls("alternate_urls")
+        def test_positional_only(response, /):
+            assert response.content == b"alternate"
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stderr
+
+
+def test_early_activation_preserves_variadic_and_default_arguments(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import fixture, mark, parametrize
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        @parametrize("expected", [b"alternate"])
+        def test_routes(response, expected=b"default", *args, **kwargs):
+            assert response.content == expected
+            assert args == ()
+            assert kwargs == {}
+        """,
+    )
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_leaves_fixtures_with_test_prefix_unchanged(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import fixture
+
+        @fixture(scope="session")
+        def test_resource():
+            return "shared resource"
+
+        def test_resource_consumer(test_resource):
+            assert test_resource == "shared resource"
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_preserves_inherited_classmethod_owner(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import mark
+
+        class Base:
+            @classmethod
+            @mark.urls("original_urls")
+            def test_class_owner(cls):
+                assert cls.__name__ == "TestInherited"
+
+        class TestInherited(Base):
+            pass
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_supports_test_suffix_filenames(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("alternate_urls")
+        def test_selected_routes(response):
+            assert response.content == b"alternate"
+        """,
+    )
+    (tmp_path / "test_consumer.py").rename(tmp_path / "consumer_test.py")
+    (tmp_path / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr

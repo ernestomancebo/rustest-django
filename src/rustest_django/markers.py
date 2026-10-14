@@ -10,6 +10,16 @@ from rustest_django._errors import _message
 
 
 @fixture(autouse=True)
+def _django_marker_context(
+    _django_isolate_apps,
+    _django_set_urlconf,
+    _django_template_variables,
+    _django_db_isolation,
+) -> None:
+    """Common activation dependency for all per-test Django marker policies."""
+
+
+@fixture(autouse=True)
 def _django_isolate_apps(request: FixtureRequest):
     marker = request.node.get_closest_marker("django_isolate_apps")
     if marker is None:

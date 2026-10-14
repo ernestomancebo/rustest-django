@@ -39,8 +39,10 @@ from rustest_django.mail import (  # noqa: F401
     django_mail_patch_dns,
     mailoutbox,
 )
+from rustest_django.marker_activation import install as _install_marker_activation
 from rustest_django.markers import (  # noqa: F401
     _django_isolate_apps,
+    _django_marker_context,
     _django_set_urlconf,
     _django_template_variables,
     django_isolated_apps,
@@ -56,6 +58,8 @@ from rustest_django.settings_fixture import Settings, settings  # noqa: F401
 from rustest_django.unittest_guard import _unittest_style_guard  # noqa: F401
 
 __version__ = _pkg_version("rustest-django")
+
+_install_marker_activation()
 
 __all__ = [
     "DjangoAssertNumQueries",
