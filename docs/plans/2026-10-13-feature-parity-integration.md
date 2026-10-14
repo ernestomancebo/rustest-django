@@ -104,3 +104,9 @@ The independent final review reported no outstanding findings after the direct-c
 and helper-import fixes. New feature and review regressions exercise the agreed
 consumer CLI seam. Class/module marks, Django unittest outcomes, and native automatic
 worker identity remain documented upstream runner boundaries.
+
+Final exact-outcome parity checks passed for all examples: minimal SQLite (15 tests),
+multi-database (6), async views (4), and real HTTP/database sharing against PostgreSQL
+(15). Ruff, type checking, all pre-commit hooks, strict MkDocs, and distribution metadata
+checks passed. A fresh wheel installation also exercised URL markers and live-server
+database visibility independently of the editable source checkout.
