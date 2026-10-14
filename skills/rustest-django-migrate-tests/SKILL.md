@@ -116,10 +116,14 @@ state that execution was unavailable separately from the supported conversion.
 
 - Rewrite `LiveServerTestCase` methods to functions requesting `live_server`.
   `str(live_server)`, `live_server.url`, and `live_server + "/path/"` give its address.
-  The session server starts lazily; each consuming test gets transactional DB access.
+  Requesting the fixture activates transactional DB access but does not start the
+  HTTP thread. The session server starts only on first address use (`str`, `.url`,
+  or concatenation), rather than when the fixture is requested.
   Request `django_db_serialized_rollback` as well when data migrations populate rows
   that must survive earlier transactional flushes. Avoid adding `db` for a server test
   that needs committed writes visible to the HTTP thread.
+  Fixture parameter order does not select isolation or snapshot restoration; both
+  requests activate the required database setup before the test body runs.
 - Keep function-level `@mark.urls("project.test_urls")` for per-test routes and
   `@mark.django_isolate_apps("app.module")` with `django_isolated_apps` for an isolated
   registry. Registry isolation does not create tables or enable database access.

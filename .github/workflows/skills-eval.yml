@@ -5,11 +5,14 @@ on:
     paths: &skill-source-paths
       - ".github/workflows/skills-eval.yml"
       - "skills/**"
+      - "scripts/run_skill_evals.py"
       - "docs/spec/unittest-support.md"
       - "docs/spec/upstream.md"
       - "docs/spec/async.md"
       - "site-docs/migration-guide.md"
       - "site-docs/reference/markers.md"
+      - "site-docs/reference/fixtures.md"
+      - "site-docs/reference/configuration.md"
       - "site-docs/reference/unsupported.md"
   pull_request:
     paths: *skill-source-paths
@@ -24,13 +27,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm install -g @anthropic-ai/claude-code
+      - run: npm install -g @anthropic-ai/claude-code@2.1.299
       - name: Run rustest-django-migrate-tests / rustest-django-doctor eval suite
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
         run: |
-          claude plugin eval skills --trust-plugin --no-publish \
-            --ablation with-without --runs 3 --concurrency 3 --judge-model sonnet \
+          python scripts/run_skill_evals.py --trust-plugin --no-publish \
+            --ablation with-without --runs 3 --concurrency 3 --judge-model opus \
             --threshold 1.0 \
             --json skills/evals/results/ci-run.json
       - uses: actions/upload-artifact@v4

@@ -10,20 +10,27 @@ you've hit and what to do about it, running the suite itself when it can and rea
 from pasted output when it can't. It does not silently "fix" anything — several of the
 causes below have no fix, only a documented reason.
 
+Start with the supplied code and error. Explain only causes matching that evidence;
+do not append the rest of the troubleshooting catalogue. When a question explicitly
+uses the current feature set, do not add legacy fixture substitutions for a hypothetical
+pinned installation. When it explicitly pins an older release, respect that constraint.
+
 ## 1. Check for unmigrated TestCase subclasses first
 
-Before anything else, run the detection step from the `rustest-django-migrate-tests`
+If the supplied failing code is already a plain test function, proceed to its reported
+failure. Otherwise, run the detection step from the `rustest-django-migrate-tests`
 skill (find `SimpleTestCase`/`TestCase`/`TransactionTestCase`/`LiveServerTestCase`
 subclasses in the failing area of the suite). If that skill isn't installed alongside
 this one, its detection step is in
 [`skills/rustest-django-migrate-tests/SKILL.md`](https://raw.githubusercontent.com/ernestomancebo/rustest-django/main/skills/rustest-django-migrate-tests/SKILL.md) —
 fetch it directly rather than reimplementing the search here. If any affected classes
-exist, that's the diagnosis: their methods run but their results are discarded, so a
-"passing" or "failing" report from them is not trustworthy either way. Point at that
-skill for the fix; don't re-derive the detection logic here.
+exist, explain the current plugin's guard failure. Without that guard, the runner
+discards their method results and can report a false pass. The guard deliberately
+rejects these classes; use the migration skill for the rewrite.
 
-**Done when**: you've confirmed no unmigrated `TestCase` subclass is in the failing
-area, or you've identified one and handed off to `rustest-django-migrate-tests`.
+**Done when**: the supplied failing test is a plain function, you've confirmed no
+unmigrated `TestCase` subclass is in the failing area, or you've identified one and
+handed off to `rustest-django-migrate-tests`.
 
 ## 2. Run the suite and read the machine-readable output
 
@@ -46,6 +53,10 @@ against section 3.
 Match the failure to one of these before guessing. Two of them produce the *identical*
 symptom for *opposite* reasons — check which applies before recommending a fix:
 
+- **No database permission requested**: an ordinary test can also produce
+  `Database access not allowed...` when it requests neither a database fixture nor
+  a recognized database marker. The message alone does not prove an import-mode or
+  class-marker problem; inspect the test's fixture requests, marks, and runner command.
 - **Missing `--pytest-compat`**: a test file still says `import pytest` /
   `@pytest.mark.django_db`, but the run didn't pass `--pytest-compat`. The mark is
   silently invisible, and the test fails with `Database access not allowed, use the
@@ -93,15 +104,18 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   implements `live_server`, `django_db_serialized_rollback`, `django_isolated_apps`,
   `@mark.urls`, and `@mark.ignore_template_errors`. Check the installed package,
   interpreter, lockfile, and `rustest_fixtures` registration before applying advice
-  from an older release. For an older installation that must stay pinned, `db`
-  preserves migration data through rollback when real commits are unnecessary;
-  `transactional_db` flushes tables and is not a restoration substitute.
+  from an older release. On the stated current feature set, keep the supported
+  fixtures; this is an installation check, not a reason to substitute other fixtures.
 - **Migration data missing in a live-server or transactional test**: `live_server`
   activates transactional database access so committed writes reach its HTTP thread.
   Flush teardown can remove migration-created rows. Request
   `django_db_serialized_rollback` alongside `live_server` or `transactional_db`, or
   use `@mark.django_db(transaction=True, serialized_rollback=True)`, to restore the
-  setup snapshot. Fixture parameter order does not select the isolation mode.
+  database-setup snapshot before the test. The setup machinery creates the snapshot;
+  the serialized-rollback fixture requests restoration. `live_server` supplies
+  transactional access, not automatic serialized restoration. If the test already
+  requests both fixtures, keep both and explain their separate roles.
+  Fixture parameter order does not select the isolation mode.
   Replacing the combination with `db` changes commit visibility. Check that migrations
   are enabled when the expected rows are created by data migrations.
 - **App-isolation fixture error**: `django_isolated_apps` requires a function-level
@@ -130,3 +144,14 @@ symptom for *opposite* reasons — check which applies before recommending a fix
 **Done when**: the failure is matched to exactly one cause above (or confirmed to be none
 of them — an ordinary test bug), and the human has been told which it is and why, not
 just handed a generic fixture-error explanation.
+
+## Explicitly pinned legacy installations
+
+Use this section only when the request explicitly excludes upgrading an older release
+that predates standalone serialized rollback. Do not include it in a current-version
+diagnosis or as a hypothetical fallback.
+
+When real commits are unnecessary, `db` preserves migration data through rollback.
+`transactional_db` flushes tables and does not restore migration-created rows. If the
+test requires real commits, explain that `db` changes that requirement and is not a
+valid replacement for the live-server/restoration combination.

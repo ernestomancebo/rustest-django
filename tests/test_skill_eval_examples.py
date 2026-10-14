@@ -9,6 +9,37 @@ from pathlib import Path
 from rustest import mark
 
 EVALS = Path(__file__).resolve().parents[1] / "skills" / "evals"
+ROOT = EVALS.parents[1]
+
+
+def test_eval_judge_receives_request_constraints_and_public_api(tmp_path: Path) -> None:
+    prepared = tmp_path / "skills"
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "run_skill_evals.py"),
+            "--prepare-only",
+            str(prepared),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    legacy = prepared / "evals" / "doctor-preserves-migration-data"
+    criteria = (legacy / "graders" / "criteria.md").read_text()
+    assert "upgrading is outside this request" in criteria
+    live = prepared / "evals" / "migrate-live-server-transactions"
+    assert 'live_server + "/path/"' in (live / "graders" / "criteria.md").read_text()
+    for case in EVALS.glob("*/prompt.md"):
+        assert (prepared / "evals" / case.parent.name / "prompt.md").read_bytes() == (
+            case.read_bytes()
+        )
+    indicator = "doctor-preserves-migration-data/graders/skill-fired.md"
+    assert (prepared / "evals" / indicator).read_bytes() == (
+        EVALS / indicator
+    ).read_bytes()
 
 
 def _run_example(
