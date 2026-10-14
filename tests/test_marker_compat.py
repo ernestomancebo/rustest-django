@@ -648,3 +648,93 @@ def test_early_activation_supports_test_suffix_filenames(tmp_path: Path) -> None
     )
     result = run_rustest(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+@parametrize("parameter", ["", "tmp_path"])
+def test_early_activation_preserves_direct_test_calls(
+    tmp_path: Path, parameter: str
+) -> None:
+    assertion = "assert tmp_path.is_dir()" if parameter else "assert True"
+    _project(
+        tmp_path,
+        f"""
+        def test_base({parameter}):
+            {assertion}
+
+        def test_derived({parameter}):
+            test_base({parameter})
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_importing_django_assertions_keeps_plain_rustest_fixture_ownership(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "conftest.py").write_text("import rustest_django.asserts\n")
+    (tmp_path / "test_consumer.py").write_text(
+        "def test_plain_python(tmp_path):\n    assert tmp_path.is_dir()\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_early_activation_preserves_direct_classmethod_and_keyword_calls(
+    tmp_path: Path,
+) -> None:
+    _project(
+        tmp_path,
+        """
+        class TestCalls:
+            @classmethod
+            def test_base(cls, tmp_path):
+                assert cls.__name__ == "TestCalls"
+                assert tmp_path.is_dir()
+
+            @classmethod
+            def test_derived(cls, tmp_path):
+                cls.test_base(tmp_path)
+                cls.test_base(tmp_path=tmp_path)
+
+            @staticmethod
+            def test_static(tmp_path):
+                TestCalls.test_base(tmp_path=tmp_path)
+        """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_fixture_declarations_are_scoped_to_django_child_directory(
+    tmp_path: Path,
+) -> None:
+    django_project = tmp_path / "django_suite"
+    django_project.mkdir()
+    _project(
+        django_project,
+        """
+        from rustest import fixture, mark
+
+        @fixture
+        def response(client):
+            return client.get("/value/")
+
+        @mark.urls("django_suite.alternate_urls")
+        def test_django_child(response):
+            assert response.content == b"alternate"
+        """,
+    )
+    (django_project / "alternate_urls.py").write_text(
+        "from django.http import HttpResponse\n"
+        "from django.urls import path\n"
+        'urlpatterns = [path("value/", lambda request: HttpResponse("alternate"))]\n'
+    )
+    sibling = tmp_path / "plain_suite"
+    sibling.mkdir()
+    (sibling / "test_plain.py").write_text(
+        "def test_plain_sibling(tmp_path):\n    assert tmp_path.is_dir()\n"
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "2 passed" in result.stderr

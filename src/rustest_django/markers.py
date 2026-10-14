@@ -15,8 +15,11 @@ def _django_marker_context(
     _django_set_urlconf,
     _django_template_variables,
     _django_db_isolation,
-) -> None:
+) -> object:
     """Common activation dependency for all per-test Django marker policies."""
+    from rustest_django.marker_activation import _RUNNER_CONTEXT
+
+    return _RUNNER_CONTEXT
 
 
 @fixture(autouse=True)
