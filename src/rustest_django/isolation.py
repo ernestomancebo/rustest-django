@@ -73,7 +73,21 @@ def django_db_serialized_rollback(_django_db_context: _DjangoDbContext) -> None:
 @fixture
 def _django_db_context(request: FixtureRequest) -> _DjangoDbContext:
     context = _DjangoDbContext()
-    names = requested_fixtures(request)
+    from rustest_django.live_server import live_server
+
+    requested = requested_fixtures(request)
+    plugin_fixtures = {
+        "db": db,
+        "transactional_db": transactional_db,
+        "django_db_reset_sequences": django_db_reset_sequences,
+        "django_db_serialized_rollback": django_db_serialized_rollback,
+        "live_server": live_server,
+    }
+    names = {
+        name
+        for name, definition in plugin_fixtures.items()
+        if requested.get(name) is definition
+    }
     context.live_server = "live_server" in names
     context.transaction = context.live_server or "transactional_db" in names
     context.reset_sequences = "django_db_reset_sequences" in names

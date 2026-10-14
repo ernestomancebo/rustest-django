@@ -423,8 +423,8 @@ def test_db_requests_preserve_flags_when_a_dependency_builds_isolation(
         from store.models import Item
 
         @fixture
-        def records(db, request):
-            request.getfixturevalue("_django_db_isolation")
+        def records(admin_user):
+            assert admin_user.is_superuser
             Item.objects.create(name="fixture-created")
             return "fixture-created"
 
@@ -436,6 +436,11 @@ def test_db_requests_preserve_flags_when_a_dependency_builds_isolation(
     """,
     )
     _database_app(tmp_path)
+    with (tmp_path / "settings.py").open("a") as settings:
+        settings.write(
+            'INSTALLED_APPS = ["django.contrib.auth", '
+            '"django.contrib.contenttypes", "store"]\n'
+        )
     result = run_rustest(tmp_path)
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -495,3 +500,110 @@ def test_failed_browser_setup_removes_file_test_database(tmp_path: Path) -> None
     assert "expected browser setup failure" in result.stderr
     assert "test body must not run" not in result.stderr
     assert not database.exists(), "The failed session left its test database behind"
+
+
+def test_usefixtures_marker_enables_transactional_database(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.db import connection
+        from rustest import mark
+        from store.models import Item
+
+        @mark.usefixtures("transactional_db")
+        def test_committed_access():
+            assert not connection.in_atomic_block
+            Item.objects.create(name="marker-created")
+            assert Item.objects.get(name="marker-created").name == "marker-created"
+    """,
+    )
+    _database_app(tmp_path)
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_overridden_live_server_does_not_enable_django_database(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.conf import settings
+        from django.db import connection
+        from rustest import raises
+
+        def test_external_server(live_server):
+            assert live_server == "https://external.example"
+            assert settings.ALLOWED_HOSTS == ["testserver"]
+            assert connection.settings_dict["NAME"] == ":memory:"
+            with raises(RuntimeError):
+                connection.ensure_connection()
+    """,
+    )
+    (tmp_path / "conftest.py").write_text(
+        textwrap.dedent("""
+        from rustest import fixture
+        rustest_fixtures = ["rustest_django"]
+
+        @fixture(scope="session")
+        def live_server():
+            return "https://external.example"
+    """)
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_parametrized_database_fixture_name_is_plain_test_data(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.db import connection
+        from rustest import mark, parametrize
+
+        @mark.django_db()
+        @parametrize("transactional_db", ["label"])
+        def test_atomic_data(transactional_db):
+            assert transactional_db == "label"
+            assert connection.in_atomic_block
+    """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_stacked_usefixtures_markers_keep_all_database_requests(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.db import connection
+        from rustest import mark
+        from store.models import Item
+
+        @mark.usefixtures("client")
+        @mark.usefixtures("transactional_db")
+        def test_committed_access():
+            assert not connection.in_atomic_block
+            Item.objects.create(name="stacked-marker")
+            assert Item.objects.get(name="stacked-marker").name == "stacked-marker"
+    """,
+    )
+    _database_app(tmp_path)
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_indirect_database_parametrization_remains_a_fixture(tmp_path: Path) -> None:
+    _project(
+        tmp_path,
+        """
+        from django.db import connection
+        from rustest import mark, parametrize
+
+        @mark.django_db()
+        @parametrize("transactional_db", ["label"], indirect=True)
+        def test_committed_fixture(transactional_db):
+            assert transactional_db is None
+            assert not connection.in_atomic_block
+    """,
+    )
+    result = run_rustest(tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
