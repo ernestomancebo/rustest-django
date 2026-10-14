@@ -133,8 +133,7 @@ like a rustest-django bug the first time you see it.
 
 ## What doesn't migrate
 
-A handful of pytest-django features are intentionally unsupported in rustest-django v1
-and fail loudly rather than silently doing the wrong thing:
+A handful of pytest-django features remain outside rustest-django v1's supported tier:
 
 - **Unittest-style Django `TestCase` subclasses** (`SimpleTestCase`, `TestCase`,
   `TransactionTestCase`, `LiveServerTestCase`). rustest runs their methods but discards
@@ -145,6 +144,8 @@ and fail loudly rather than silently doing the wrong thing:
   `urls`/`ignore_template_errors` markers. See [Unsupported features](reference/unsupported.md)
   for what each one does instead, where an alternative exists.
 
-If your suite uses any of these, you'll see a `rustest-django: ...` error naming exactly
-what's unsupported the moment a test touches it -- that's the guard working as intended,
-not a bug.
+These fixture requests and function-level guarded markers raise a `rustest-django: ...`
+error naming the unsupported feature. The companion `django_isolate_apps` marker is
+currently unhandled and does not isolate the app registry when used alone. The
+[unsupported-feature inventory](reference/unsupported.md) also covers missing runner
+options, no-op suffix fixtures, and marker argument limitations.

@@ -8,8 +8,10 @@
 ```
 
 From `rustest.mark` (the same object as `pytest.mark` when running with
-`--pytest-compat`). Same defaults and kwarg validation as pytest-django's `django_db`
-mark -- unknown kwargs raise `TypeError`.
+`--pytest-compat`). Use the keyword arguments shown above. Positional values are
+currently ignored, and unknown kwargs are not rejected, so this differs from
+pytest-django's argument validation. For example, use `transaction=True` rather than
+`@mark.django_db(True)`.
 
 - `transaction=True` behaves like requesting the `transactional_db` fixture instead of
   `db`.

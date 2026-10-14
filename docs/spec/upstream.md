@@ -5,10 +5,9 @@ Spec section for rustest-django v1. Decided in wayfinder ticket #16.
 ## Version target
 
 v1 targets rustest 0.18.0, the published release everything in this spec was researched
-and prototyped against. Package metadata pins `rustest>=0.18,<1.0`. rustest's maintainer
-has an unreleased 1.0 rewrite in progress (`v2/release-candidate`, source-only, no wheel,
-not on PyPI); it is not a build dependency for this map. A version-floor bump to 1.0 is a
-fresh ticket once it ships and a spike confirms nothing here regressed.
+and prototyped against. Package metadata pins `rustest>=0.18,<1.0`. Adopting a released
+rustest 1.0 requires a separate compatibility spike and parity run before changing the
+dependency range; development branches are not build dependencies for this spec.
 
 ## Gaps reported upstream
 
@@ -43,4 +42,7 @@ Not offered as a function decorator; use `@mark.django_db(...)` directly there.
 
 ## Listing on rustest's pytest-plugins page
 
-Deferred until rustest-django has a first release to point at.
+The release prerequisite is satisfied by
+[rustest-django 0.0.1](https://pypi.org/project/rustest-django/0.0.1/).
+The remaining work is an upstream documentation contribution, tracked in
+[#26](https://github.com/ernestomancebo/rustest-django/issues/26).

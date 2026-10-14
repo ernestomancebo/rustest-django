@@ -1,8 +1,9 @@
 # Release process design
 
 Tracks: [#23](https://github.com/ernestomancebo/rustest-django/issues/23)
-Manual follow-up: [#28](https://github.com/ernestomancebo/rustest-django/issues/28) (PyPI
-trusted publisher registration — needs a human with PyPI account access)
+Implemented by [PR #29](https://github.com/ernestomancebo/rustest-django/pull/29).
+The publisher registration in [#28](https://github.com/ernestomancebo/rustest-django/issues/28)
+is complete, and the first release, `v0.0.1`, was published on 2026-09-17.
 
 ## Decisions
 
@@ -91,8 +92,8 @@ No re-run of the test suite or `twine check`/fresh-venv-install here — that al
 happened as a required check before merge and again on `main`'s own CI run for this
 commit (which step 3 verifies).
 
-## Open item
+## Publisher registration
 
-[#28](https://github.com/ernestomancebo/rustest-django/issues/28): registering the
-PyPI trusted publisher itself is a manual, PyPI-account-only step. The workflow can be
-built and merged before this is done; it just can't successfully publish until it is.
+[#28](https://github.com/ernestomancebo/rustest-django/issues/28) is complete. The configured
+trusted publisher has published [0.0.1](https://pypi.org/project/rustest-django/0.0.1/).
+Future releases use the same workflow and publisher registration.

@@ -48,7 +48,7 @@ That's the whole integration surface -- one line in `conftest.py`. From there:
 
 This site is versioned by Read the Docs:
 
-- **stable** (the default) tracks the latest tagged PyPI release -- what
+- **stable** tracks the latest tagged PyPI release -- what
   `pip install rustest-django` actually gives you.
 - **latest** tracks the `main` branch, including unreleased changes.
 
@@ -64,5 +64,6 @@ changelog before upgrading.
 
 rustest is a from-scratch Python test runner, not a pytest plugin host -- it has no
 plugin/hook system, so pytest-django itself can't just be installed and used. rustest-django
-reimplements pytest-django's fixtures and marker on rustest's own primitives, keeping the
-public surface identical.
+reimplements the supported pytest-django fixtures and marker options on rustest's own
+primitives. The remaining boundaries are listed in
+[Unsupported features](reference/unsupported.md).

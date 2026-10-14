@@ -27,6 +27,8 @@ built-in default.
 - `create_db` has no pyproject key: it is a one-shot action, not a project default. As in
   pytest-django it only cancels `reuse_db`.
 - Env booleans accept `1`/`0`, `true`/`false`, `yes`/`no`, `on`/`off`, case-insensitive.
+- TOML boolean keys should use `true` or `false`. They currently use Python truthiness
+  rather than strict type validation, so a quoted `"false"` is treated as true.
 - No `liveserver` key in v1; added by the live_server decision if that feature lands.
 - django-configurations (`--dc`, `DJANGO_CONFIGURATION`) is out of scope.
 
@@ -65,9 +67,11 @@ at collection. `setup_test_environment(debug=...)` runs in the session autouse f
 - **Settings unresolvable** (no `DJANGO_SETTINGS_MODULE` in any channel): Django is not set
   up and the run continues. Non-Django tests pass. Any Django-dependent fixture fails with
   a message naming the three ways to configure the settings module.
-- **Invalid configuration** (unknown key in `[tool.rustest-django]`, wrong TOML type,
-  unparsable env boolean, settings module that fails to import): fail fast. The error is
-  captured at import time (rustest swallows import-time exceptions from fixture modules),
-  printed to stderr, and re-raised from the session autouse fixture so every test fails
-  with the same message.
-- Exact message shapes are decided with the error UX of unsupported features.
+- **Invalid configuration** (unknown key in `[tool.rustest-django]`, invalid debug-mode
+  value, unparsable TOML or env boolean, settings module that fails to import): fail fast.
+  The error is captured at import time (rustest swallows import-time exceptions from
+  fixture modules), then re-raised from the session autouse fixture so every test fails
+  with the same message. Wrong types for TOML boolean keys are not currently rejected.
+- Configuration and bootstrap messages use the implemented `rustest-django: ` prefix.
+  Accepted keys or values are included for supported validation failures; bootstrap
+  errors retain their original cause without printing a duplicate import-time traceback.

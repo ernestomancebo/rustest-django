@@ -1,12 +1,17 @@
 # Configuration
 
-Every setting can be given three ways, in this precedence order (highest wins):
+Most settings can be given as environment variables or project configuration. The
+precedence order is:
 
 1. An environment variable.
 2. A key under `[tool.rustest-django]` in `pyproject.toml`.
-3. A pytest-compatible fallback under `[tool.pytest.ini_options]`, for two keys only
-   (`settings_module`, `find_project`) -- useful if you're migrating a project that
-   already has a `pytest.ini`-style config and don't want to duplicate it.
+3. A pytest-compatible fallback under `[tool.pytest.ini_options]`, for three keys only
+   (`settings_module`, `find_project`, `debug_mode`) -- useful if your project already
+   has pytest configuration in `pyproject.toml` and you don't want to duplicate it.
+
+`RUSTEST_DJANGO_CREATE_DB` is environment-only. The fallback names are
+`DJANGO_SETTINGS_MODULE`, `django_find_project`, and `django_debug_mode` in
+`pyproject.toml`; rustest-django does not read `pytest.ini`, `setup.cfg`, or `tox.ini`.
 
 ```toml
 # pyproject.toml
@@ -29,9 +34,14 @@ migrations = false
 
 ## Boolean values
 
-`reuse_db`, `migrations`, and `find_project` accept `1`/`true`/`yes`/`on` or
-`0`/`false`/`no`/`off` (case-insensitive). Anything else fails fast with a
+The boolean environment variables accept `1`/`true`/`yes`/`on` or
+`0`/`false`/`no`/`off` (case-insensitive). Invalid environment values raise a
 `rustest-django: ...` error naming the accepted spellings.
+
+In TOML, write `reuse_db`, `migrations`, and `find_project` as actual booleans
+(`true` or `false`), without quotes. These keys currently use Python truthiness
+rather than strict type validation: `migrations = "false"` enables migrations.
+Rejecting wrong TOML types remains a validation follow-up.
 
 ## `debug_mode` values
 
@@ -48,6 +58,6 @@ the three accepted values.
 
 ## Invalid configuration
 
-An unknown key under `[tool.rustest-django]`, or an unparsable value, fails immediately at
-startup with a `rustest-django: ...` error naming the problem -- config errors never fail
-silently or fall back to a guessed default.
+Unknown keys under `[tool.rustest-django]`, invalid `debug_mode` values, unparsable TOML,
+and invalid boolean environment values raise a `rustest-django: ...` error at startup.
+TOML boolean keys have the type-validation limitation described above.

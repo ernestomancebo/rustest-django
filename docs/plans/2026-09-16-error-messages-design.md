@@ -3,6 +3,9 @@
 Resolves GitHub issue #24, deferred in `docs/spec.md`'s "Deferred" section
 from the original wayfinder map.
 
+Implemented by [PR #30](https://github.com/ernestomancebo/rustest-django/pull/30).
+The problem and implementation plan below record the design that was shipped.
+
 ## Problem
 
 Failures for unsupported fixtures/markers, the unittest-style guard, config
