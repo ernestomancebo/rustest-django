@@ -74,6 +74,9 @@ class TestSomething:
     def test_one(self): ...
 ```
 
+The class decorator is a factory: always call it, using `@django_db()` when there
+are no options and `@django_db(transaction=True)` when passing options.
+
 ## 4. Rewrite the test bodies
 
 - Django-specific assertions with documented module-level equivalents, such as
@@ -87,7 +90,9 @@ class TestSomething:
   `self.assertFalse(value)` becomes `assert not value`. Preserve any custom failure
   message. These inherited methods are not exported by `rustest_django.asserts`.
 - `with self.assertRaises(Error): ...` → `with raises(Error): ...`, importing `raises`
-  from `rustest`; retain callable-style checks by moving the call inside the context.
+  from `rustest`; this is a confirmed public export. Retain callable-style checks by
+  moving the call inside the context. `with self.assertRaisesRegex(Error, pattern)`
+  becomes `with raises(Error, match=pattern)`.
 - `self.client` / `self.async_client` / `self.request_factory` → `client` / `async_client`
   / `rf` fixture parameters on the test function.
 - `self.settings(...)` context manager, or a class-level `@override_settings(...)` →
@@ -98,7 +103,43 @@ class TestSomething:
   pulled into a project-local fixture if genuinely shared across many tests.
 
 **Done when**: every method of the class compiles as a standalone function using only
-fixtures and module-level asserts — no remaining reference to `self`.
+fixtures and module-level asserts — no remaining reference to `self`. When asked for
+a runnable rewrite, supply the whole test file with imports and every original check.
+Use the confirmed exports above even when the sandbox cannot inspect installed source;
+state that execution was unavailable separately from the supported conversion.
+
+## Per-test features and project defaults
+
+- Rewrite `LiveServerTestCase` methods to functions requesting `live_server`.
+  `str(live_server)`, `live_server.url`, and `live_server + "/path/"` give its address.
+  The session server starts lazily; each consuming test gets transactional DB access.
+  Request `django_db_serialized_rollback` as well when data migrations populate rows
+  that must survive earlier transactional flushes. Avoid adding `db` for a server test
+  that needs committed writes visible to the HTTP thread.
+- Keep function-level `@mark.urls("project.test_urls")` for per-test routes and
+  `@mark.django_isolate_apps("app.module")` with `django_isolated_apps` for an isolated
+  registry. Registry isolation does not create tables or enable database access.
+- Keep strict template checking as a project setting and use argument-free
+  `@mark.ignore_template_errors` only on intentional missing-variable fallback tests.
+  These marker contexts cover consumer fixture setup and restore after failures.
+- Put project defaults in `[tool.rustest-django]`: `settings_module`, `configuration`,
+  `live_server_host`, `live_server_port`, and `fail_on_template_vars`. Port `0` asks
+  the OS for a free port. Native boolean keys use actual TOML booleans. Optional
+  django-configurations support is installed with `rustest-django[configurations]`.
+  Environment overrides win over native TOML, then the selected pytest INI/TOML
+  fallback. Discovery uses the nearest supported directory, even an empty supported
+  source; within it pytest.ini, .pytest.ini, tool.pytest, then tool.pytest.ini_options
+  select one fallback. Unrelated pyproject files are skipped.
+  See the [configuration reference](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/configuration.md)
+  for accepted keys. Pytest `addopts` and plugin CLI flags are not forwarded;
+  use `reuse_db = true` / `RUSTEST_DJANGO_REUSE_DB=true` for `--reuse-db`, and
+  `migrations = false` / `RUSTEST_DJANGO_MIGRATIONS=false` for `--nomigrations`.
+  `RUSTEST_DJANGO_CREATE_DB=true` forces recreation; this override is environment-only.
+  Per-process DB suffixes require external identities: `TOX_PARALLEL_ENV` adds the tox
+  suffix, then `RUSTEST_DJANGO_DB_SUFFIX` adds a worker suffix (falling back to
+  `PYTEST_XDIST_WORKER`). Both suffixes can apply together; they are not competing
+  fallback sources. Rustest worker IDs are not supplied automatically, and in-memory
+  SQLite/mirrors are excluded from suffixing.
 
 ## 5. Flag the gaps — do not silently "handle" these
 

@@ -3,6 +3,10 @@ type: llm
 weight: 1
 ---
 
+The supported API contract is that `from rustest import skip` and
+`skip("reason")` are valid, and a function-level `@mark.django_db` enables database
+access before the test body. Grade the conditional replacement against these facts.
+
 A successful response:
 
 - Correctly identifies the cause: rustest reports `unittest.SkipTest` (which
@@ -21,5 +25,8 @@ A successful response:
   itself work as before.
 
 A failing response invents a working fixture-based fix, claims this will be resolved by
-some rustest-django configuration change, or fails to mention that this is a known,
-unworkaroundable upstream limitation.
+some rustest-django configuration change, or fails to identify the upstream
+SkipTest-handling limitation. Replacing the old Django decorator with native skip
+is the requested valid fix: it does not claim the original decorator now works.
+Calling that a "fix" or saying the suite can skip again after replacement is correct.
+A test-execution caveat is acceptable; command execution is not required.

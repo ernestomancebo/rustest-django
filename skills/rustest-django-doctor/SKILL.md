@@ -56,10 +56,20 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   *same* `Database access not allowed...` error, but the cause is
   [rustest#143](https://github.com/apex-engineers-inc/rustest/issues/143) — class-level
   marks and module-level `pytestmark` don't propagate to methods at all. Fix: replace the
-  class-level `@mark.django_db(...)` with the `rustest_django.django_db` class decorator
-  (full recipe in `rustest-django-migrate-tests`'s "Class-mark gotcha," step 3 — same file
-  linked above if it's not installed alongside this skill), or mark each method
-  individually.
+  class-level `@mark.django_db(...)` with the `rustest_django.django_db` class decorator:
+
+  ```python
+  from rustest_django import django_db
+
+  @django_db()
+  class TestOrders:
+      def test_create(self): ...
+  ```
+
+  Call the decorator factory even without options: `@django_db()` or
+  `@django_db(transaction=True)`. Alternatively, mark each method individually with
+  `@mark.django_db`. The full recipe is in `rustest-django-migrate-tests`'s
+  "Class-mark gotcha," step 3 (same file linked above).
 - **Unrewritten `pytest_django` import**: `from pytest_django.asserts import ...` raises
   `ImportError`. `--pytest-compat` only shims the `pytest` module, never `pytest_django`.
   Fix: rewrite to `from rustest_django.asserts import ...` (this is exactly
@@ -79,17 +89,39 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   concurrently on one loop with nothing enforcing otherwise — it can look exactly like a
   race condition or a flaky test. Check the fixture scopes before chasing a data race; the
   fix is narrowing the loop scope back to function, not adding locking.
-- **An unsupported-feature error naming a fixture or marker** (`live_server`,
-  `django_db_serialized_rollback`, `django_isolated_apps`, `@mark.urls`,
-  `@mark.ignore_template_errors`) — not a bug, a documented v1 gap; full list and
-  rationale in
-  [`site-docs/reference/unsupported.md`](https://raw.githubusercontent.com/ernestomancebo/rustest-django/main/site-docs/reference/unsupported.md).
-  Point at the documented alternative if one exists. For `django_db_serialized_rollback`,
-  use `db` when rollback isolation is sufficient: it preserves migration-loaded data
-  between tests. `transactional_db` flushes tables and can delete those rows, so it is
-  not a drop-in replacement. If the test needs real transaction commits or flush
-  isolation, explain that `db` changes those semantics and that data restoration needs
-  an explicit plan. Say plainly when no alternative exists (`live_server` has none).
+- **An old unsupported-feature error naming a fixture or marker**: the current plugin
+  implements `live_server`, `django_db_serialized_rollback`, `django_isolated_apps`,
+  `@mark.urls`, and `@mark.ignore_template_errors`. Check the installed package,
+  interpreter, lockfile, and `rustest_fixtures` registration before applying advice
+  from an older release. For an older installation that must stay pinned, `db`
+  preserves migration data through rollback when real commits are unnecessary;
+  `transactional_db` flushes tables and is not a restoration substitute.
+- **Migration data missing in a live-server or transactional test**: `live_server`
+  activates transactional database access so committed writes reach its HTTP thread.
+  Flush teardown can remove migration-created rows. Request
+  `django_db_serialized_rollback` alongside `live_server` or `transactional_db`, or
+  use `@mark.django_db(transaction=True, serialized_rollback=True)`, to restore the
+  setup snapshot. Fixture parameter order does not select the isolation mode.
+  Replacing the combination with `db` changes commit visibility. Check that migrations
+  are enabled when the expected rows are created by data migrations.
+- **App-isolation fixture error**: `django_isolated_apps` requires a function-level
+  `@mark.django_isolate_apps("app.module", ...)` with at least one app name. It returns
+  an isolated registry; it neither creates database tables nor grants DB access.
+  Django's original registry is restored after the test, including test or fixture
+  setup failures. Class/module marks do not propagate: put the marker on each method
+  when grouping these tests in a plain class.
+- **Missing template variable under strict checking**: project configuration
+  `fail_on_template_vars = true` (or the compatible `FAIL_INVALID_TEMPLATE_VARS`
+  setting) rejects missing rendered variables, even with a `default` filter.
+  Missing values in conditionals remain allowed. Apply argument-free
+  `@mark.ignore_template_errors` to an intentional fallback test; checking resumes
+  after that test. Use `@mark.urls("project.test_urls")` for a per-test URLconf;
+  both policies apply before consumer fixture setup and restore state after failures.
+
+  The fixture, marker, and configuration contracts are in
+  [`site-docs/reference/fixtures.md`](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/fixtures.md),
+  [`markers.md`](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/markers.md),
+  and [`configuration.md`](https://github.com/ernestomancebo/rustest-django/blob/main/site-docs/reference/configuration.md).
 - **`rustest --llm` produces no output, or errors on the flag itself**: the target's
   installed rustest predates 0.18.0, where `--llm` shipped (`docs/spec/upstream.md`'s
   "Version target" section). Fix: upgrade rustest, or fall back to reading `--junit-xml`

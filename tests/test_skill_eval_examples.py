@@ -25,6 +25,8 @@ def _run_example(
         'INSTALLED_APPS = ["blog"]\n'
         'DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", '
         '"NAME": ":memory:"}}\n'
+        'TEMPLATES = [{"BACKEND": '
+        '"django.template.backends.django.DjangoTemplates"}]\n'
     )
     app = project / "blog"
     app.mkdir()
@@ -66,3 +68,26 @@ def test_skip_diagnosis_example_fails_with_unittest_skiptest(tmp_path: Path) -> 
 
     assert result.returncode != 0, result.stdout + result.stderr
     assert "SkipTest" in result.stderr, result.stdout + result.stderr
+
+
+def test_template_diagnosis_example_fails_on_missing_rendered_variable(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setenv("RUSTEST_DJANGO_FAIL_ON_TEMPLATE_VARS", "true")
+    result = _run_example(tmp_path, "doctor-template-fixture-policy")
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Undefined template variable 'missing'" in result.stderr, (
+        result.stdout + result.stderr
+    )
+
+
+def test_app_registry_diagnosis_example_requires_companion_marker(
+    tmp_path: Path,
+) -> None:
+    result = _run_example(tmp_path, "doctor-isolated-app-registry")
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "django_isolated_apps fixture requires" in result.stderr, (
+        result.stdout + result.stderr
+    )
