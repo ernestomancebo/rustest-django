@@ -140,12 +140,19 @@ A handful of pytest-django features remain outside rustest-django v1's supported
   the result, so every method would otherwise silently report as passed regardless of
   what actually happened. Rewrite these as plain functions using the `db`/`transactional_db`
   fixtures, or exclude those test paths from your rustest run for now.
-- `live_server`, `django_db_serialized_rollback`, `django_isolated_apps` fixtures, and the
-  `urls`/`ignore_template_errors` markers. See [Unsupported features](reference/unsupported.md)
-  for what each one does instead, where an alternative exists.
+- Class-level marks and module-level `pytestmark` do not propagate under rustest 0.18.
+  Use the [`django_db` class decorator](reference/markers.md#function-vs-class-marks)
+  or apply marks to test functions.
 
-These fixture requests and function-level guarded markers raise a `rustest-django: ...`
-error naming the unsupported feature. The companion `django_isolate_apps` marker is
-currently unhandled and does not isolate the app registry when used alone. The
-[unsupported-feature inventory](reference/unsupported.md) also covers missing runner
-options, no-op suffix fixtures, and marker argument limitations.
+The live-server, serialized-rollback, and isolated-app fixtures are implemented, along
+with the `urls`, `django_isolate_apps`, and `ignore_template_errors` function-level
+markers. See the [fixture](reference/fixtures.md) and [marker](reference/markers.md)
+references for their lifetimes and arguments.
+
+Pytest-Django runner flags map to [environment variables or project
+configuration](reference/configuration.md). Existing Django settings in `pytest.ini`
+or pytest's TOML sections provide fallbacks; pytest `addopts` is not forwarded to
+rustest. For django-configurations projects, install the `configurations` extra.
+
+The [remaining runner boundaries](reference/unsupported.md) cover unittest results,
+mark propagation, and automatic parallel-worker identity.

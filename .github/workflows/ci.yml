@@ -53,7 +53,7 @@ jobs:
       - run: uv sync --python ${{ matrix.pyver.python }} --no-install-package django
       - name: Pin Django ${{ matrix.pyver.django }}
         run: uv pip install "django==${{ matrix.pyver.django }}.*"
-      - run: uv run rustest tests --color=never
+      - run: uv run --no-sync rustest tests --color=never
   parity:
     needs: [lint, typecheck]
     runs-on: ubuntu-latest
@@ -244,11 +244,11 @@ jobs:
       - name: Pin Django ${{ matrix.django-version }}
         run: uv pip install "django==${{ matrix.django-version }}.*"
       - name: Run under pytest
-        run: uv run pytest --junit-xml=pytest.xml tests/
+        run: uv run --no-sync pytest --junit-xml=pytest.xml tests/
       - name: Run under rustest --pytest-compat
-        run: uv run rustest --pytest-compat --llm tests/ > rustest.jsonl
+        run: uv run --no-sync rustest --pytest-compat --llm tests/ > rustest.jsonl
       - name: Compare outcomes
-        run: uv run python ../compare_outcomes.py pytest.xml rustest.jsonl
+        run: uv run --no-sync python ../compare_outcomes.py pytest.xml rustest.jsonl
   docs:
     needs: [lint, typecheck]
     runs-on: ubuntu-latest

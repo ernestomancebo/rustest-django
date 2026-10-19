@@ -14,14 +14,34 @@ A consumer migrates by:
    supported; without the flag, real pytest marks are invisible to rustest fixtures.
 3. Replacing `from pytest_django...` imports with `from rustest_django...`.
 
-## Marker
+## Markers
 
 `@mark.django_db(transaction=False, reset_sequences=False, databases=None,
 serialized_rollback=False, available_apps=None)`, from `rustest.mark` (identical object
-as `pytest.mark` under `--pytest-compat`). Pass options by keyword. The implemented
-isolation reads these kwargs with pytest-django's defaults; positional values and
-unknown kwargs are currently ignored rather than validated. This is a compatibility
-gap with pytest-django, not a supported alternative spelling.
+as `pytest.mark` under `--pytest-compat`). Arguments bind to this signature with
+pytest-django's defaults: positional values are accepted in declaration order,
+and unknown keywords, duplicate arguments, or excess positional values raise an
+error with the `rustest-django: ` prefix. Binding validates the argument signature;
+it does not add stricter value-type checks than pytest-django.
+
+`@mark.urls(urls)` accepts a URLconf module name or imported module, including the
+keyword spelling. Its per-test context overrides `ROOT_URLCONF`, clears resolver
+caches and resets the current URLconf on entry and exit. Django settings and URL
+resolution are restored on test or fixture failure.
+
+`@mark.django_isolate_apps(*app_labels)` requires one or more app module strings
+and uses Django's `isolate_apps` context for the test. The `django_isolated_apps`
+fixture returns the isolated registry, or raises an actionable error when used
+without this marker. Registration isolation does not create tables or request
+database access.
+
+`@mark.ignore_template_errors` (also callable without arguments) exempts a test
+from the project's `fail_on_template_vars` policy. The policy rejects undefined
+rendered variables, including filtered expressions, across configured Django
+template backends; Django's missing-variable behavior in conditionals is retained.
+Failures identify the variable and template origin when available. Backend
+`string_if_invalid` values are restored even after test or fixture failures. The
+marker does not enable strict checking and rejects arguments.
 
 Function-level marks work directly under rustest 0.18. Class-level marks do not
 propagate to methods (rustest limitation, reported upstream as
@@ -33,33 +53,48 @@ every `test*` method at class-decoration time. See `docs/spec/upstream.md`. Modu
 ## Fixtures
 
 Database and lifecycle:
-`db`, `transactional_db`, `django_db_reset_sequences`, `django_db_setup`,
+`db`, `transactional_db`, `django_db_reset_sequences`,
+`django_db_serialized_rollback`, `django_db_setup`,
 `django_db_blocker`, `django_db_createdb`, `django_db_keepdb`, `django_db_use_migrations`,
 `django_db_modify_db_settings`, `django_db_modify_db_settings_parallel_suffix`,
-`django_db_modify_db_settings_tox_suffix`, `django_db_modify_db_settings_xdist_suffix`
-(name kept, no-op), `django_test_environment`.
+`django_db_modify_db_settings_tox_suffix`, `django_db_modify_db_settings_xdist_suffix`,
+`django_test_environment`, `live_server`.
+
+`django_db_serialized_rollback` requests snapshot restoration and composes with
+transactional database fixtures. `live_server` exposes a real HTTP server through
+its `.url` property and string representation, starts it after transactional
+database setup, and stops it at session teardown. Tests requesting it receive
+transactional isolation so the server thread can see committed data.
+
+The database-settings fixture chain applies `TOX_PARALLEL_ENV` and then
+`RUSTEST_DJANGO_DB_SUFFIX` (or `PYTEST_XDIST_WORKER`) to test database names. Mirrors
+and in-memory SQLite databases are excluded. This does not provide automatic
+database isolation for native rustest parallel workers without a worker suffix.
 
 Clients and users:
 `client`, `async_client`, `rf`, `async_rf`, `admin_client`, `admin_user`,
 `django_user_model`, `django_username_field`.
 
 Settings, mail, queries:
-`settings`, `mailoutbox`, `django_mail_patch_dns`, `django_mail_dnsname`,
+`settings`, `django_isolated_apps`, `mailoutbox`, `django_mail_patch_dns`,
+`django_mail_dnsname`,
 `django_capture_on_commit_callbacks`, `django_assert_num_queries`,
 `django_assert_max_num_queries`.
 
-Autouse internals, private names, not part of the contract: marker activation, mailbox
-autoclear, `Site` cache clear, the unittest-style guard, the unsupported-marker guard.
+Autouse internals, private names, not part of the contract: marker activation,
+template policy, mailbox autoclear, and the unittest-style guard.
 
 All session fixtures above are overridable by name from a consumer `conftest.py`.
 
 The fixture-name inventory was compared on 2026-10-13 with pytest-django
 [`fixtures.py`](https://github.com/pytest-dev/pytest-django/blob/ad5867df0bbb8ba4743694fbf5489a6b58c00a07/pytest_django/fixtures.py)
 and [`plugin.py`](https://github.com/pytest-dev/pytest-django/blob/ad5867df0bbb8ba4743694fbf5489a6b58c00a07/pytest_django/plugin.py):
-all 31 public fixture names are present. This includes the three unsupported stubs
-below and the three no-op suffix variants; name coverage does not imply those features
-are implemented. `django_db_modify_db_settings` is also a no-op by default and remains
-an override point for consumer configuration.
+all 31 public fixture names are present. The previously unsupported `live_server`,
+`django_db_serialized_rollback`, and `django_isolated_apps` fixtures now implement
+their respective server, restoration, and registry behavior. The suffix variants
+apply their configured environment identities; fixture-name parity does not imply
+native parallel-worker integration. `django_db_modify_db_settings` remains an
+override point for consumer configuration.
 
 ## Module exports
 
@@ -67,28 +102,20 @@ an override point for consumer configuration.
 `Settings`, `DjangoDbBlocker`, `django_db` (the class decorator).
 
 `rustest_django.asserts`: Django-specific `assert*` methods declared on `SimpleTestCase`,
-`TestCase`, `TransactionTestCase`, `LiveServerTestCase` and `MessagesTestMixin`, as
+`TestCase`, `TransactionTestCase`, `LiveServerTestCase` and, on Django 5.0+,
+`MessagesTestMixin`, as
 module-level functions, with an `asserts.pyi` stub. Inherited unittest assertions such
 as `assertEqual`, `assertTrue`, and `assertRaises` are not exported; use Python
 assertions and `rustest.raises` when rewriting those calls.
 
-## Unsupported names
+## Remaining compatibility limits
 
-The following excluded features have explicit guards:
-
-- Fixtures `live_server`, `django_db_serialized_rollback`, `django_isolated_apps` are
-  defined and raise a `rustest_django` error naming the feature and stating it is
-  unsupported in v1.
-- Function-level markers `urls` and `ignore_template_errors` are detected by an autouse
-  fixture and raise the same way. Class-level marks remain subject to rustest's
-  propagation limitation.
-- Unittest-style tests fail per method (see the unittest decision).
-
-The `django_isolate_apps` marker is not implemented or guarded: using it alone does
-not isolate model registration. Requesting `django_isolated_apps` raises the explicit
-unsupported error. Template-variable failure handling (`--fail-on-template-vars`),
-django-configurations integration, and live-server configuration also remain excluded;
-see the [unsupported-feature inventory](../../site-docs/reference/unsupported.md).
+Unittest-style tests fail per method with an explicit guard (see the unittest
+decision). Class-level and module-level markers remain subject to rustest's
+propagation limits described above. Native parallel execution also requires a
+reliable worker identity before shared database names can be isolated
+automatically. See the
+[unsupported-feature inventory](../../site-docs/reference/unsupported.md).
 
 Guarded failures use the implemented `rustest-django: ` prefix and give a concrete
 alternative when one is available, as recorded in the

@@ -27,15 +27,25 @@ from rustest_django.isolation import (  # noqa: F401
     django_db_modify_db_settings_tox_suffix,
     django_db_modify_db_settings_xdist_suffix,
     django_db_reset_sequences,
+    django_db_serialized_rollback,
     django_db_setup,
     django_db_use_migrations,
     transactional_db,
 )
+from rustest_django.live_server import live_server  # noqa: F401
 from rustest_django.mail import (  # noqa: F401
     _dj_autoclear_mailbox,
     django_mail_dnsname,
     django_mail_patch_dns,
     mailoutbox,
+)
+from rustest_django.marker_activation import install as _install_marker_activation
+from rustest_django.markers import (  # noqa: F401
+    _django_isolate_apps,
+    _django_marker_context,
+    _django_set_urlconf,
+    _django_template_variables,
+    django_isolated_apps,
 )
 from rustest_django.queries import (  # noqa: F401
     DjangoAssertNumQueries,
@@ -46,14 +56,10 @@ from rustest_django.queries import (  # noqa: F401
 )
 from rustest_django.settings_fixture import Settings, settings  # noqa: F401
 from rustest_django.unittest_guard import _unittest_style_guard  # noqa: F401
-from rustest_django.unsupported import (  # noqa: F401
-    _unsupported_marker_guard,
-    django_db_serialized_rollback,
-    django_isolated_apps,
-    live_server,
-)
 
 __version__ = _pkg_version("rustest-django")
+
+_install_marker_activation()
 
 __all__ = [
     "DjangoAssertNumQueries",

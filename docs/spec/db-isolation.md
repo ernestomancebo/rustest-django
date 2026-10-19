@@ -20,11 +20,11 @@ Lifted only by an isolation (below) or an explicit unblock (`django_db_blocker`)
 
 ## Isolation modes
 
-Requested by `db`, `transactional_db`, or `@mark.django_db(...)`:
+Requested by database fixtures, `live_server`, or `@mark.django_db(...)`:
 
 - **Rollback** (default): wraps the test in a transaction, rolled back after.
 - **Flush**: tables emptied after the test. Used when `transaction=True`, or forced by
-  `reset_sequences=True`.
+  `reset_sequences=True` or live-server access.
 
 Marker kwargs (`transaction`, `reset_sequences`, `databases`, `serialized_rollback`,
 `available_apps`) pass straight through to Django's TestCase class attributes,
@@ -32,11 +32,13 @@ pytest-django's defaults and validation.
 
 ## Fixture-requested upgrades
 
-rustest has no `request.fixturenames`, so a fixture that wants a stronger isolation than
-what's already active (e.g. `transactional_db` requested after `db` has already built
-rollback isolation) sets a flag on a per-test context that the isolation reads before it
-picks its mode. If the flag resolves *after* isolation is already built, that's a clear
-error, not a silent downgrade.
+The `rustest_compat` adapter infers the fixture closure before isolation is built,
+including dependent fixtures, autouse fixtures, and `usefixtures` marks. Direct
+parametrized values are excluded; consumer overrides retain their own behavior. This lets live-server and
+serialized-rollback requirements combine with other database fixtures regardless of
+parameter order. Flag fixtures also record dynamic requests. Repeating an already
+established request is idempotent; requesting a stronger mode after isolation has been
+built raises instead of rebuilding isolation and losing fixture-created data.
 
 ## Test database lifecycle
 

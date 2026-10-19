@@ -4,6 +4,8 @@ here, per ADR 0001, so a Django version bump has one place to adapt.
 
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import django.test
 
 
@@ -71,3 +73,40 @@ def post_teardown(
     test_case._post_teardown()
     test_case_class.tearDownClass()
     test_case_class.doClassCleanups()
+
+
+@contextmanager
+def running_live_server(host: str, port: int):
+    from django.apps import apps
+    from django.conf import settings
+    from django.db import connections
+    from django.test.testcases import LiveServerThread, _StaticFilesHandler
+
+    handler = _StaticFilesHandler if settings.STATIC_URL else lambda app: app
+    if apps.is_installed("django.contrib.staticfiles"):
+        from django.contrib.staticfiles.handlers import StaticFilesHandler
+
+        handler = StaticFilesHandler
+    shared_connections = {
+        connection.alias: connection
+        for connection in connections.all()
+        if connection.vendor == "sqlite" and connection.is_in_memory_db()
+    }
+    thread = LiveServerThread(
+        host, handler, connections_override=shared_connections, port=port
+    )
+    for connection in shared_connections.values():
+        connection.inc_thread_sharing()
+    try:
+        thread.daemon = True
+        thread.start()
+        thread.is_ready.wait()
+        if thread.error:
+            raise thread.error
+        yield thread.port
+    finally:
+        try:
+            thread.terminate()
+        finally:
+            for connection in shared_connections.values():
+                connection.dec_thread_sharing()

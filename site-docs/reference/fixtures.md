@@ -12,16 +12,40 @@ test parameter, or override it by name from your own `conftest.py`.
   testing `on_commit` callbacks).
 - **`django_db_reset_sequences`** -- like `transactional_db`, and also resets
   auto-increment sequences, so new rows get predictable IDs starting from 1.
+- **`django_db_serialized_rollback`** -- requests restoration of the database snapshot
+  created during setup. Combine with `transactional_db` or `live_server` when tests
+  need real transactions while preserving migration-created data.
 - **`django_db_setup`**, **`django_db_blocker`**, **`django_db_createdb`**,
   **`django_db_keepdb`**, **`django_db_use_migrations`** -- session-scoped internals
   controlling how the test database is created/migrated/torn down. Override by name if
   you need custom database setup; most consumers never touch these directly.
 - **`django_db_modify_db_settings`**, **`django_db_modify_db_settings_parallel_suffix`**,
   **`django_db_modify_db_settings_tox_suffix`**, **`django_db_modify_db_settings_xdist_suffix`**
-  -- names kept for drop-in compatibility with pytest-django `conftest.py` overrides; the
-  parallel/tox/xdist-suffix variants are no-ops in rustest-django: they do not add
-  worker or tox-environment suffixes. `django_db_modify_db_settings` is also empty by
-  default and can be overridden for project-specific setup.
+  -- apply database-name suffixes before test database creation. Tox identities come
+  from `TOX_PARALLEL_ENV`; worker identities come from `RUSTEST_DJANGO_DB_SUFFIX`, falling
+  back to `PYTEST_XDIST_WORKER`. In-memory SQLite and database mirrors are excluded.
+  Override `django_db_modify_db_settings` for project-specific setup. Rustest's
+  experimental workers do not supply a supported automatic worker identity here;
+  configure a distinct suffix for each separate process.
+
+## Live server
+
+**`live_server`** -- a session-scoped real Django HTTP server. Use `live_server.url`,
+`str(live_server)`, or `live_server + "/path/"` for its address. Startup is deferred
+until the address is used; requesting it activates transactional database access for
+the test, including when requested through a session-scoped browser fixture.
+
+The test and server use separate threads, so database writes must be committed to be
+visible between them. The fixture handles shared in-memory SQLite connections and
+stops the server at session teardown. Configure its host and port through the
+[configuration reference](configuration.md).
+
+## App registry
+
+**`django_isolated_apps`** -- the isolated registry created by
+[`@mark.django_isolate_apps`](markers.md#markdjango_isolate_apps). Requesting this
+fixture without the companion marker raises an error. Registry changes are restored
+after each marked test.
 
 ## Clients and users
 
@@ -65,7 +89,8 @@ Not fixtures, but exported from `rustest_django` directly: `__version__`,
 The `django_db` class decorator is also exported; see [Markers](markers.md).
 
 `rustest_django.asserts` -- Django-specific `assert*` methods declared on `SimpleTestCase`,
-`TestCase`, `TransactionTestCase`, `LiveServerTestCase`, and `MessagesTestMixin`, exposed
+`TestCase`, `TransactionTestCase`, `LiveServerTestCase`, and (on Django 5.0+)
+`MessagesTestMixin`, exposed
 as plain module-level functions (e.g. `rustest_django.asserts.assertContains(...)`), for
 suites that imported helpers from `pytest_django.asserts`. Inherited unittest methods
 such as `assertEqual`, `assertTrue`, and `assertRaises` are not module exports. Use

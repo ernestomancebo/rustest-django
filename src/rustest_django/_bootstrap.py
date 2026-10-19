@@ -13,7 +13,7 @@ import django
 import django.conf
 from rustest import fixture
 
-from rustest_django._errors import _message
+from rustest_django._errors import ConfigError, _message
 from rustest_django.config import ResolvedConfig, resolve_config
 
 error: Exception | None = None
@@ -54,6 +54,21 @@ def run() -> None:
 
         settings_ready = os.environ.get("DJANGO_SETTINGS_MODULE")
         if settings_ready and not django.conf.settings.configured:
+            if config.configuration:
+                os.environ["DJANGO_CONFIGURATION"] = config.configuration
+                try:
+                    from configurations import importer
+                except ModuleNotFoundError as exc:
+                    if exc.name != "configurations":
+                        raise
+                    raise ConfigError(
+                        _message(
+                            "DJANGO_CONFIGURATION requires django-configurations. "
+                            "Install django-configurations or the configurations "
+                            "extra for rustest-django."
+                        )
+                    ) from exc
+                importer.install()
             django.setup()
     except Exception as exc:  # noqa: BLE001
         error = exc

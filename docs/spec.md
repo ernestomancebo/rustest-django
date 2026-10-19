@@ -12,9 +12,10 @@ the remaining compatibility boundaries.
   compatibility boundaries documented; internals use rustest primitives.
 - **Compat contract**: a consumer migrates with an import-path swap only
   (`pytest_django` → `rustest_django`, see [Public API § Name
-  swap](./spec/api.md#name-swap)) within the supported tier. Defined unsupported
-  fixtures and guarded markers fail loudly; unhandled marker cases are listed in
-  [Public API § Unsupported names](./spec/api.md#unsupported-names).
+  swap](./spec/api.md#name-swap)) within the supported tier. Invalid marker/configuration
+  arguments and unsupported Django unittest tests fail
+  loudly. Runner boundaries are listed in
+  [Public API § Remaining compatibility limits](./spec/api.md#remaining-compatibility-limits).
 - **Supported tier v1**:
   - **T1** (full): settings, setup, `db`, `transactional_db`, `django_db`, `client`,
     `rf`, `admin_*`, `django_user_model`, `settings`, `mailoutbox`,
@@ -22,8 +23,9 @@ the remaining compatibility boundaries.
   - **T2** (picks): `django_assert_num_queries`/`max`, `async_client`/`async_rf`,
     multi-database.
   - **T3** (pick): reuse-db as a runner option.
-  - Everything else is unsupported in v1 (see [Public API § Unsupported
-    names](./spec/api.md#unsupported-names)).
+  - Follow-up ports add live server, standalone serialized rollback, app isolation,
+    URL overrides, strict templates, configuration-class bootstrap, and database suffixes.
+    Remaining boundaries are in [Public API § Remaining compatibility limits](./spec/api.md#remaining-compatibility-limits).
 
 Glossary: [CONTEXT.md](../CONTEXT.md).
 
@@ -78,14 +80,11 @@ Native async tests, loop-scope constraint, DB-access caveat:
 
 ## Unsupported-feature behaviour
 
-The unsupported fixture stubs, the `urls` and `ignore_template_errors` function-level
-markers, and Django unittest-style tests fail loudly. Enforced at three points: the marker/fixture
-guard in [Public API § Unsupported names](./spec/api.md#unsupported-names), the config
-validation in [Configuration § Failure behaviour](./spec/configuration.md#failure-behaviour),
-and the per-method guard in [Unsupported test styles](./spec/unittest-support.md).
-Messages use the implemented `rustest-django: ` prefix and include an alternative when
-one exists. The `django_isolate_apps` marker is currently unhandled; it does not receive
-this guard. See [Unsupported names](./spec/api.md#unsupported-names).
+Django unittest-style tests fail loudly, as do invalid configuration and marker
+arguments. Messages use the `rustest-django: ` prefix and include an alternative when
+one exists. Fixture and marker ports are implemented; class/module mark propagation,
+Django unittest result reporting, and automatic native parallel-worker identity remain
+runner boundaries. See [Remaining compatibility limits](./spec/api.md#remaining-compatibility-limits).
 
 ## Example projects and CI
 
@@ -110,31 +109,17 @@ Gaps reported to rustest, workarounds shipped in the meantime:
 
 ## Deferred
 
-These features remain outside the implemented v1 tier. `live_server` has an open
-implementation issue; the other additions need a scope decision and their own follow-up.
-The user-facing [unsupported-feature inventory](../site-docs/reference/unsupported.md)
-describes current behavior and alternatives.
+The previously deferred plugin fixtures, markers, and configuration integrations are
+implemented. The remaining work depends on upstream runner capabilities:
 
-- **`live_server`**: depends on rustest's process/thread model and whether a session
-  fixture can own a server thread cleanly. Tracked by
-  [#25](https://github.com/ernestomancebo/rustest-django/issues/25), including its
-  `--liveserver`-equivalent configuration.
-- **Standalone `django_db_serialized_rollback` fixture**: a defined unsupported stub.
-  The `django_db` marker's `serialized_rollback` kwarg is already implemented.
-- **App-registry isolation**: the `django_isolated_apps` fixture is an unsupported stub;
-  the companion `django_isolate_apps` marker is unhandled.
-- **`urls`, `ignore_template_errors`, and `--fail-on-template-vars`**: URL overrides
-  have a `settings`-fixture alternative; template-variable failure instrumentation has
-  no v1 equivalent.
-- **django-configurations and database-name suffixing**: `--dc` / `DJANGO_CONFIGURATION`
-  integration is excluded. The parallel/tox/xdist suffix fixtures retain their names but
-  are no-ops.
+- Django unittest outcome reporting and class/module marker propagation.
+- Automatic worker identity and database isolation for native rustest parallel runs.
+- Plugin CLI flag registration; supported Django options use project configuration
+  and environment overrides instead.
 
-The implemented `django_db` marker also has two compatibility gaps: positional values
-are ignored, and unknown kwargs are not rejected. Use the supported keyword arguments;
-matching pytest-django's positional handling and validation requires a code follow-up.
-Configuration also coerces TOML boolean keys without strict type validation; use
-actual TOML booleans as described in the [configuration reference](../site-docs/reference/configuration.md#boolean-values).
+See the [runner-boundary reference](../site-docs/reference/unsupported.md). The
+implementation and verification plan is recorded in
+[feature integration](plans/2026-10-13-feature-parity-integration.md).
 
 ## Completed follow-ups
 
@@ -142,6 +127,7 @@ The original map deferred these tasks, which are now implemented:
 
 | Task | Implementation |
 |---|---|
+| Fixture, marker, and configuration ports | [Integration plan](plans/2026-10-13-feature-parity-integration.md); live server ([#25](https://github.com/ernestomancebo/rustest-django/issues/25)), rollback/app-isolation fixtures, URL/template markers, configuration-class bootstrap, INI fallbacks, suffixes, and argument/type validation. |
 | Error-message shapes | [Design](plans/2026-09-16-error-messages-design.md) and [PR #30](https://github.com/ernestomancebo/rustest-django/pull/30); shared prefix and alternatives in configuration, bootstrap, fixture, and unittest guards. |
 | Consumer migration guide | [Published guide source](../site-docs/migration-guide.md), delivered with [PR #33](https://github.com/ernestomancebo/rustest-django/pull/33). |
 | Release process and trusted publishing | [Release design](plans/2026-09-16-release-process-design.md), [PR #29](https://github.com/ernestomancebo/rustest-django/pull/29), and completed [publisher registration #28](https://github.com/ernestomancebo/rustest-django/issues/28); release `v0.0.1` is published. |
