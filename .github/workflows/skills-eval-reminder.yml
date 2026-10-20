@@ -40,6 +40,6 @@ jobs:
 
           $touched
 
-          If the change could alter what the skills should say or how they are graded, run it before merging: Actions, Skills eval, Run workflow, pick this branch. A run costs roughly 16 USD.
+          If the change could alter what the skills should say or how they are graded, run it before merging: Actions, Skills eval, Run workflow, pick this branch.
           EOF
           gh pr comment "$PR" --repo "$REPO" --body-file body.md --edit-last --create-if-none
