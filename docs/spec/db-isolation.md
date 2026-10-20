@@ -40,6 +40,16 @@ parameter order. Flag fixtures also record dynamic requests. Repeating an alread
 established request is idempotent; requesting a stronger mode after isolation has been
 built raises instead of rebuilding isolation and losing fixture-created data.
 
+Consumer fixtures that request `db` or `transactional_db` as parameters can use the
+database in their body: the isolation is built before any consumer fixture runs. A
+request made at run time (`request.getfixturevalue("db")`) arrives after that point, so
+the requesting `db` or `transactional_db` fixture builds the isolation itself and tears
+it down with its own teardown. Dynamic requests for `django_db_reset_sequences`,
+`django_db_serialized_rollback`, and `live_server` do not get this and still need to be
+parameters. As in pytest-django, a fixture wider than function scope cannot request `db`
+(the runner reports a scope mismatch), and a fixture that does not request a database
+fixture still hits the blocker.
+
 ## Test database lifecycle
 
 Test databases are created lazily, on the first DB test, one per alias in

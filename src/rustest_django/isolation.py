@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from contextlib import nullcontext
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
 from typing import Any
 
 from rustest import FixtureRequest, fixture
@@ -27,6 +28,7 @@ class _DjangoDbContext:
         self.reset_sequences = False
         self.serialized_rollback = False
         self._built = False
+        self.isolation_deferred = False
 
     def _require_not_built(self, fixture_name: str) -> None:
         if self._built:
@@ -106,14 +108,42 @@ def _django_db_context(request: FixtureRequest) -> _DjangoDbContext:
     return context
 
 
+def _build_deferred_isolation(
+    request: FixtureRequest,
+    context: _DjangoDbContext,
+    blocker: DjangoDbBlocker,
+) -> Iterator[None]:
+    """Build isolation for a request made after the autouse isolation had run.
+
+    A static request is seen by the autouse isolation, which builds it before any
+    consumer fixture. A dynamic request (request.getfixturevalue) arrives later, so
+    the requesting fixture builds the isolation itself and tears it down with it.
+    """
+    if context.isolation_deferred:
+        with _isolation(request, context, blocker, {}):
+            yield
+    else:
+        yield
+
+
 @fixture
-def db(_django_db_context: _DjangoDbContext) -> None:
+def db(
+    request: FixtureRequest,
+    _django_db_context: _DjangoDbContext,
+    django_db_blocker: DjangoDbBlocker,
+):
     _django_db_context.request_db()
+    yield from _build_deferred_isolation(request, _django_db_context, django_db_blocker)
 
 
 @fixture
-def transactional_db(_django_db_context: _DjangoDbContext) -> None:
+def transactional_db(
+    request: FixtureRequest,
+    _django_db_context: _DjangoDbContext,
+    django_db_blocker: DjangoDbBlocker,
+):
     _django_db_context.request_transactional()
+    yield from _build_deferred_isolation(request, _django_db_context, django_db_blocker)
 
 
 @fixture
@@ -265,6 +295,57 @@ def _django_db_arguments(
     }
 
 
+@contextmanager
+def _isolation(
+    request: FixtureRequest,
+    context: _DjangoDbContext,
+    blocker: DjangoDbBlocker,
+    marker_kwargs: dict[str, Any],
+) -> Iterator[None]:
+    request.getfixturevalue("django_db_setup")
+    context._built = True
+    context.isolation_deferred = False
+    reset_sequences = context.reset_sequences or marker_kwargs.get(
+        "reset_sequences", False
+    )
+    serialized_rollback = context.serialized_rollback or marker_kwargs.get(
+        "serialized_rollback", False
+    )
+    transactional = (
+        context.transaction
+        or reset_sequences
+        or marker_kwargs.get("transaction", False)
+    )
+
+    with blocker.unblock():
+        test_case_class = django_compat.build_test_case_class(
+            transactional=transactional,
+            reset_sequences=reset_sequences,
+            serialized_rollback=serialized_rollback,
+            databases=marker_kwargs.get("databases"),
+            available_apps=marker_kwargs.get("available_apps"),
+        )
+        test_case = django_compat.pre_setup(test_case_class)
+
+        from django.test.utils import modify_settings
+
+        config = _bootstrap.resolved_config
+        settings_context = (
+            modify_settings(
+                ALLOWED_HOSTS={
+                    "append": getattr(config, "live_server_host", "localhost")
+                }
+            )
+            if context.live_server
+            else nullcontext()
+        )
+        try:
+            with settings_context:
+                yield
+        finally:
+            django_compat.post_teardown(test_case, test_case_class)
+
+
 @fixture(autouse=True)
 def _django_db_isolation(
     request: FixtureRequest,
@@ -282,49 +363,11 @@ def _django_db_isolation(
         raise TypeError(_message(f"invalid @mark.django_db arguments: {exc}")) from exc
 
     if not _django_db_context.requested and marker is None:
+        # A fixture or test may still ask for db or transactional_db at run time
+        # (request.getfixturevalue); those fixtures then build the isolation.
+        _django_db_context.isolation_deferred = True
         yield
         return
 
-    request.getfixturevalue("django_db_setup")
-    _django_db_context._built = True
-    _reset_sequences = _django_db_context.reset_sequences or marker_kwargs.get(
-        "reset_sequences", False
-    )
-    _serialized_rollback = _django_db_context.serialized_rollback or marker_kwargs.get(
-        "serialized_rollback", False
-    )
-    _databases = marker_kwargs.get("databases")
-    _available_apps = marker_kwargs.get("available_apps")
-    transactional = (
-        _django_db_context.transaction
-        or _reset_sequences
-        or marker_kwargs.get("transaction", False)
-    )
-
-    with django_db_blocker.unblock():
-        test_case_class = django_compat.build_test_case_class(
-            transactional=transactional,
-            reset_sequences=_reset_sequences,
-            serialized_rollback=_serialized_rollback,
-            databases=_databases,
-            available_apps=_available_apps,
-        )
-        test_case = django_compat.pre_setup(test_case_class)
-
-        from django.test.utils import modify_settings
-
-        config = _bootstrap.resolved_config
-        settings_context = (
-            modify_settings(
-                ALLOWED_HOSTS={
-                    "append": getattr(config, "live_server_host", "localhost")
-                }
-            )
-            if _django_db_context.live_server
-            else nullcontext()
-        )
-        try:
-            with settings_context:
-                yield
-        finally:
-            django_compat.post_teardown(test_case, test_case_class)
+    with _isolation(request, _django_db_context, django_db_blocker, marker_kwargs):
+        yield

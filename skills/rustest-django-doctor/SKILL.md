@@ -141,8 +141,9 @@ symptom for *opposite* reasons — check which applies before recommending a fix
   Replacing the combination with `db` changes commit visibility. Check that migrations
   are enabled when the expected rows are created by data migrations.
 - **App-isolation fixture error**: `django_isolated_apps` requires a function-level
-  `@mark.django_isolate_apps("app.module", ...)` with at least one app name. It returns
-  an isolated registry; it neither creates database tables nor grants DB access.
+  `@mark.django_isolate_apps("django.contrib.contenttypes", ...)` with at least one
+  dotted app module path (the importable module, not the app label `"contenttypes"`).
+  It returns an isolated registry; it neither creates database tables nor grants DB access.
   Django's original registry is restored after the test, including test or fixture
   setup failures. Class/module marks do not propagate: put the marker on each method
   when grouping these tests in a plain class.
