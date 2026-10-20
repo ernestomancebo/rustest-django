@@ -2,20 +2,12 @@ name: Skills eval
 on:
   push:
     branches: [main]
-    paths: &skill-source-paths
-      - ".github/workflows/skills-eval.yml"
+    paths:
       - "skills/**"
-      - "scripts/run_skill_evals.py"
-      - "docs/spec/unittest-support.md"
-      - "docs/spec/upstream.md"
-      - "docs/spec/async.md"
-      - "site-docs/migration-guide.md"
-      - "site-docs/reference/markers.md"
-      - "site-docs/reference/fixtures.md"
-      - "site-docs/reference/configuration.md"
-      - "site-docs/reference/unsupported.md"
   pull_request:
-    paths: *skill-source-paths
+    paths:
+      - "skills/**"
+  workflow_dispatch:
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

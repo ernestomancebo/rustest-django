@@ -1,0 +1,45 @@
+name: Skills eval reminder
+# The skills eval runs only when skills/** changes. These files also feed it (the runner
+# and the API references quoted to the judges), so changing them without touching a skill
+# leaves the eval stale. Comment on such PRs so someone decides whether to run it.
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/skills-eval.yml"
+      - "scripts/run_skill_evals.py"
+      - "site-docs/reference/fixtures.md"
+      - "site-docs/reference/markers.md"
+      - "site-docs/reference/configuration.md"
+      - "site-docs/reference/unsupported.md"
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  remind:
+    # Fork PRs get a read-only token and cannot comment.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Comment unless the eval already runs for this PR
+        run: |
+          set -euo pipefail
+          changed=$(gh pr diff "$PR" --repo "$REPO" --name-only)
+          if grep -q '^skills/' <<< "$changed"; then
+            echo "skills/** changed, so the Skills eval runs on its own."
+            exit 0
+          fi
+          touched=$(grep -E '^(\.github/workflows/skills-eval\.yml|scripts/run_skill_evals\.py|site-docs/reference/(fixtures|markers|configuration|unsupported)\.md)$' <<< "$changed" | sed 's/^/- /')
+          cat > body.md <<EOF
+          The Skills eval did not run on this PR: nothing under skills/ changed.
+
+          It does read these files, which this PR touches:
+
+          $touched
+
+          If the change could alter what the skills should say or how they are graded, run it before merging: Actions, Skills eval, Run workflow, pick this branch. A run costs roughly 16 USD.
+          EOF
+          gh pr comment "$PR" --repo "$REPO" --body-file body.md --edit-last --create-if-none
