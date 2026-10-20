@@ -1,6 +1,6 @@
 # Migration Guide
 
-Moving an existing pytest-django test suite to rustest-django. Three changes, in order.
+Moving an existing pytest-django test suite to rustest-django. Two changes, in order, then a worked example.
 
 !!! tip "Have Claude Code do it"
     The [`rustest-django-migrate-tests` skill](agent-skills.md) applies these steps for
@@ -20,7 +20,7 @@ rustest_fixtures = ["rustest_django"]
 ```
 
 (If you never wrote `pytest_plugins` explicitly -- pytest-django usually registers itself
-via an entry point -- this line is simply new.)
+via an entry point -- this line is new.)
 
 ## 2. Decide how your test files reference pytest
 
@@ -35,7 +35,7 @@ into `sys.modules["pytest"]` so `pytest.mark`, `pytest.fixture`, `pytest.raises`
 rustest --pytest-compat
 ```
 
-This is the fastest path for a large suite -- no per-file edits.
+This needs no per-file edits.
 
 **Option B -- rewrite imports to rustest's own names.** No flag needed, but every test
 file that references `pytest.mark`/`pytest.fixture`/etc. needs its imports changed:
@@ -67,11 +67,12 @@ from pytest_django.asserts import assertContains
 from rustest_django.asserts import assertContains
 ```
 
-## 3. Worked example
+## Worked example
 
 From `examples/minimal-sqlite/` in this repo -- real Django app tests, shown pytest-django
-style then rustest-django style (Option B, fully rewritten). Both versions pass; verified
-by actually running each against its respective runner, not just written by hand.
+style then rustest-django style (Option B, fully rewritten). Both versions pass: the
+[parity check](https://github.com/ernestomancebo/rustest-django/blob/main/examples/compare_outcomes.py)
+(`make parity-test`) runs each against its respective runner and compares the outcomes.
 
 **Before** (`tests/test_views.py`, pytest-django):
 
@@ -160,3 +161,10 @@ rustest. For django-configurations projects, install the `configurations` extra.
 
 The [remaining runner boundaries](reference/unsupported.md) cover unittest results,
 mark propagation, and automatic parallel-worker identity.
+
+## If a test fails after migrating
+
+Run the [`rustest-django-doctor` skill](agent-skills.md#rustest-django-doctor) with your
+coding agent. It runs on your machine, against your suite and your failing output, so it
+can tell whether the cause is your test or one of the boundaries above and give advice
+that fits your project.

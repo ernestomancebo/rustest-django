@@ -56,8 +56,8 @@ pytest-django test suite runs by swapping `pytest_django` imports for `rustest_d
 
 ## Agent skills
 
-The fastest way to migrate is to hand it to a coding agent. Two [agent skills](skills/) help
-it work with rustest-django in your project:
+A coding agent can do the migration for you. Two [agent skills](skills/) help it work with
+rustest-django in your project:
 
 - [`rustest-django-migrate-tests`](skills/rustest-django-migrate-tests/SKILL.md): port a
   pytest-django suite, including rewriting Django `TestCase`-family classes.

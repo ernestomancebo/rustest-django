@@ -87,6 +87,14 @@ after each marked test.
 - **`django_capture_on_commit_callbacks`** -- context manager capturing
   `transaction.on_commit(...)` callbacks so they can be invoked and asserted on explicitly.
 
+## Test environment
+
+**`django_test_environment`** -- a session-scoped autouse fixture. It calls Django's
+`setup_test_environment()` when the session starts and `teardown_test_environment()` when
+it ends. Django's `DEBUG` setting is forced to the value of `debug_mode`, or left
+unchanged for `"keep"`; see the [configuration reference](configuration.md#debug-mode).
+You do not request it.
+
 ## Module-level exports
 
 Not fixtures, but exported from `rustest_django` directly: `__version__`,

@@ -29,8 +29,9 @@ Try: *"Use `rustest-django-migrate-tests` to migrate these tests to rustest-djan
 
 Diagnoses a failing or confusing rustest-django test: a database-access error, a test that
 passes when it shouldn't, an unsupported-feature error, or a test that behaves differently
-than under pytest-django. It tells you whether the cause is your suite or a known
-limitation (see [Unsupported features](reference/unsupported.md)), and it does not silently
-"fix" causes that have no fix.
+than under pytest-django. It runs on your machine against your own suite and failing
+output, so its answer is tailored to your project: it tells you whether the cause is your
+suite or a known limitation (see [Unsupported features](reference/unsupported.md)), and it
+does not silently "fix" causes that have no fix. Reach for it first when a test fails.
 
 Try: *"Use `rustest-django-doctor` to explain why this test fails under rustest-django."*

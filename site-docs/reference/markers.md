@@ -25,6 +25,11 @@ keywords, duplicate values, and too many positional arguments fail with a
   setup after earlier transactional tests flushed the tables. The
   `django_db_serialized_rollback` fixture requests the same
   restoration behavior and can be combined with `transactional_db` or `live_server`.
+- `available_apps=[...]` sets Django's `available_apps` for the test: a list of app
+  module names, for example `["django.contrib.contenttypes"]`. Django restricts the
+  installed apps to that list while the test runs, which limits the tables it flushes.
+  Django documents `available_apps` as private API that can change or be removed without
+  a deprecation period.
 
 Applying the mark is equivalent to requesting the `db` fixture (or `transactional_db`,
 etc., depending on kwargs) -- you don't need both.
