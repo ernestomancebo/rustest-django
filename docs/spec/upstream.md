@@ -43,7 +43,7 @@ Not offered as a function decorator; use `@mark.django_db(...)` directly there.
 ## Listing on rustest's pytest-plugins page
 
 The release prerequisite is satisfied by
-[rustest-django 0.0.1](https://pypi.org/project/rustest-django/0.0.1/).
+[rustest-django 0.0.2](https://pypi.org/project/rustest-django/0.0.2/).
 The remaining work is an upstream documentation contribution, tracked in
 [#26](https://github.com/ernestomancebo/rustest-django/issues/26).
 

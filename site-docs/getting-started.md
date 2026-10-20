@@ -56,5 +56,6 @@ rolled back afterward -- same behavior as pytest-django's `django_db` mark.
 rustest
 ```
 
-That's the full setup. If any of your test files still do `import pytest`, see the
+That's the full setup. Coming from pytest-django? The [agent skills](agent-skills.md) can
+migrate your suite for you. If any of your test files still do `import pytest`, see the
 [Migration Guide](migration-guide.md)'s note on `--pytest-compat` before running.

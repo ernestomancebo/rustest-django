@@ -2,6 +2,12 @@
 
 Moving an existing pytest-django test suite to rustest-django. Three changes, in order.
 
+!!! tip "Have Claude Code do it"
+    The [`rustest-django-migrate-tests` skill](agent-skills.md) applies these steps for
+    you, including the `TestCase` rewrite. Install it with
+    `npx skills add ernestomancebo/rustest-django` and ask "migrate these tests to
+    rustest-django".
+
 ## 1. Swap the plugin registration
 
 Replace pytest-django's plugin registration with rustest-django's fixture-module
