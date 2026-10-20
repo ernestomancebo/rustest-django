@@ -37,6 +37,7 @@ nav:
   - Home: index.md
   - Getting Started: getting-started.md
   - Migration Guide: migration-guide.md
+  - Agent skills: agent-skills.md
   - Reference:
       - Fixtures: reference/fixtures.md
       - Markers: reference/markers.md

@@ -28,6 +28,13 @@ test parameter, or override it by name from your own `conftest.py`.
   experimental workers do not supply a supported automatic worker identity here;
   configure a distinct suffix for each separate process.
 
+### Requesting the database from another fixture
+
+A fixture that needs the database in its own body can request `db` or `transactional_db`
+as a parameter, or call `request.getfixturevalue("db")` while it runs.
+`django_db_reset_sequences`, `django_db_serialized_rollback` and `live_server` must be
+parameters.
+
 ## Live server
 
 **`live_server`** -- a session-scoped real Django HTTP server. Use `live_server.url`,
@@ -79,6 +86,14 @@ after each marked test.
   than an exact count.
 - **`django_capture_on_commit_callbacks`** -- context manager capturing
   `transaction.on_commit(...)` callbacks so they can be invoked and asserted on explicitly.
+
+## Test environment
+
+**`django_test_environment`** -- a session-scoped autouse fixture. It calls Django's
+`setup_test_environment()` when the session starts and `teardown_test_environment()` when
+it ends. Django's `DEBUG` setting is forced to the value of `debug_mode`, or left
+unchanged for `"keep"`; see the [configuration reference](configuration.md#debug-mode).
+You do not request it.
 
 ## Module-level exports
 

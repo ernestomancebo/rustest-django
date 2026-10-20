@@ -44,6 +44,9 @@ That's the whole integration surface -- one line in `conftest.py`. From there:
   [markers](reference/markers.md), [configuration](reference/configuration.md), and
   [unsupported features](reference/unsupported.md) in detail.
 
+!!! tip "Migrating an existing suite?"
+    Let Claude Code do the rewrite with the [agent skills](agent-skills.md).
+
 ## Docs versions
 
 This site is versioned by Read the Docs:

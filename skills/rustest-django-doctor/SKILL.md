@@ -1,6 +1,6 @@
 ---
 name: rustest-django-doctor
-description: Diagnose a rustest-django test failure or misuse in a Django project — a database-access error, a test that passes when it shouldn't, an unsupported-feature error, or a test that behaves differently under rustest than it did under pytest-django. Use when a rustest-django-backed test suite is failing, flaky, or producing a confusing error, and it's unclear whether the cause is the suite or a known rustest-django limitation.
+description: Diagnose a rustest-django test failure or misuse in a Django project: a database-access error, a test that passes when it shouldn't, an unsupported-feature error, or a test that behaves differently under rustest than under pytest-django. Use when it's unclear whether the cause is the suite or a known rustest-django limitation.
 ---
 
 # rustest-django doctor

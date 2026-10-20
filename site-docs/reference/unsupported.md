@@ -1,8 +1,11 @@
 # Unsupported features
 
-The fixture, marker, and configuration ports cover all 31 public fixture names in the
-audited pytest-django surface. The remaining boundaries are runner capabilities and
-command-line integration, rather than unsupported fixture stubs.
+The fixture, marker, and configuration ports cover all 31 public fixtures of
+pytest-django 4.14.0, the version audited. The remaining boundaries are runner
+capabilities and command-line integration, rather than unsupported fixture stubs. If a test fails and you
+cannot tell whether it hits one of them, ask the
+[`rustest-django-doctor` skill](../agent-skills.md#rustest-django-doctor) to diagnose it
+against your suite.
 
 ## Unittest-style `TestCase` subclasses
 

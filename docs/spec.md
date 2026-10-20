@@ -1,8 +1,8 @@
 # rustest-django v1 spec
 
 Wayfinder map: [ernestomancebo/rustest-django#1](https://github.com/ernestomancebo/rustest-django/issues/1).
-The map is complete and the supported v1 tier is implemented. The first PyPI release is
-[0.0.1](https://pypi.org/project/rustest-django/0.0.1/); "v1" describes the design scope,
+The map is complete and the supported v1 tier is implemented. The latest PyPI release is
+[0.0.2](https://pypi.org/project/rustest-django/0.0.2/); "v1" describes the design scope,
 not a published 1.0 version. The sections below record the implemented decisions and
 the remaining compatibility boundaries.
 
