@@ -1,25 +1,12 @@
-import os
-import subprocess
-import sys
 import time
 from pathlib import Path
 
-CONFTEST = """
+from _helpers import run_rustest, write_django_conftest
+from rustest import parametrize
+
+SYNTHETIC_MODULES = """
 import sys
 import types
-
-import django
-from django.conf import settings
-
-settings.configure(
-    SECRET_KEY="test-secret",
-    INSTALLED_APPS=["django.contrib.contenttypes"],
-    DATABASES={"default": {
-        "ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:",
-    }},
-)
-django.setup()
-rustest_fixtures = ["rustest_django"]
 
 for index in range(%(modules)d):
     module = types.ModuleType(f"synthetic_{index}")
@@ -41,34 +28,6 @@ def _consumer_autouse():
 )
 
 
-def _timed_run(project: Path, modules: int, tests: str = TESTS) -> float:
-    (project / "conftest.py").write_text(CONFTEST % {"modules": modules})
-    (project / "test_consumer.py").write_text(tests)
-    started = time.perf_counter()
-    result = subprocess.run(
-        [sys.executable, "-m", "rustest", "--color=never", str(project)],
-        cwd=project,
-        capture_output=True,
-        text=True,
-        env={**os.environ, "COLUMNS": "300"},
-    )
-    elapsed = time.perf_counter() - started
-    assert result.returncode == 0, result.stdout + result.stderr
-    return elapsed
-
-
-def test_per_test_cost_does_not_grow_with_loaded_modules(tmp_path: Path) -> None:
-    small = tmp_path / "small"
-    large = tmp_path / "large"
-    small.mkdir()
-    large.mkdir()
-    baseline = min(_timed_run(small, 10), _timed_run(small, 10))
-    crowded = _timed_run(large, 5000)
-    # Both runs execute the same 100 tests; only the number of loaded modules
-    # differs. Setup of the crowded run costs a little, so allow a margin.
-    assert crowded < baseline * 1.6 + 1.0, (baseline, crowded)
-
-
 CLASS_TESTS = (
     "from rustest_django import django_db\n\n"
     "@django_db\nclass TestMany:\n"
@@ -79,15 +38,26 @@ CLASS_TESTS = (
 )
 
 
-def test_class_based_per_test_cost_does_not_grow_with_loaded_modules(
-    tmp_path: Path,
+def _timed_run(project: Path, modules: int, tests: str) -> float:
+    project.mkdir(exist_ok=True)
+    write_django_conftest(project, SYNTHETIC_MODULES % {"modules": modules})
+    (project / "test_consumer.py").write_text(tests)
+    started = time.perf_counter()
+    result = run_rustest(project)
+    elapsed = time.perf_counter() - started
+    assert result.returncode == 0, result.stdout + result.stderr
+    return elapsed
+
+
+@parametrize("tests", [TESTS, CLASS_TESTS], ids=["functions", "class_methods"])
+def test_per_test_cost_does_not_grow_with_loaded_modules(
+    tmp_path: Path, tests: str
 ) -> None:
-    small = tmp_path / "small"
-    large = tmp_path / "large"
-    small.mkdir()
-    large.mkdir()
     baseline = min(
-        _timed_run(small, 10, CLASS_TESTS), _timed_run(small, 10, CLASS_TESTS)
+        _timed_run(tmp_path / "small", 10, tests),
+        _timed_run(tmp_path / "small", 10, tests),
     )
-    crowded = _timed_run(large, 5000, CLASS_TESTS)
+    crowded = _timed_run(tmp_path / "large", 5000, tests)
+    # Both runs execute the same 100 tests; only the number of loaded modules
+    # differs. Setup of the crowded run costs a little, so allow a margin.
     assert crowded < baseline * 1.6 + 1.0, (baseline, crowded)

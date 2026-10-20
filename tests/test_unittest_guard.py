@@ -1,7 +1,7 @@
 import textwrap
 from pathlib import Path
 
-from _helpers import run_rustest
+from _helpers import run_rustest, temporary_module, write_django_conftest
 
 
 def test_unittest_style_testcase_fails_loudly(tmp_path: Path) -> None:
@@ -59,29 +59,8 @@ def test_plain_function_test_is_unaffected(tmp_path: Path) -> None:
     assert "1 passed" in result.stderr
 
 
-def _guard_project(project: Path) -> None:
-    (project / "conftest.py").write_text(
-        textwrap.dedent(
-            """
-            import django
-            from django.conf import settings
-
-            settings.configure(
-                SECRET_KEY="test-secret",
-                INSTALLED_APPS=["django.contrib.contenttypes"],
-                DATABASES={"default": {
-                    "ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:",
-                }},
-            )
-            django.setup()
-            rustest_fixtures = ["rustest_django"]
-            """
-        )
-    )
-
-
 def test_plain_class_tests_are_not_failed_by_the_guard(tmp_path: Path) -> None:
-    _guard_project(tmp_path)
+    write_django_conftest(tmp_path)
     (tmp_path / "test_consumer.py").write_text(
         textwrap.dedent(
             """
@@ -107,7 +86,7 @@ def test_plain_class_tests_are_not_failed_by_the_guard(tmp_path: Path) -> None:
 def test_same_file_name_in_two_directories_resolves_to_the_right_class(
     tmp_path: Path,
 ) -> None:
-    _guard_project(tmp_path)
+    write_django_conftest(tmp_path)
     for directory, body in (
         ("plain", "class TestShared:\n    def test_it(self):\n        assert True\n"),
         (
@@ -131,7 +110,6 @@ def test_same_file_name_in_two_directories_resolves_to_the_right_class(
 
 def test_module_imported_after_earlier_lookups_is_resolved(tmp_path: Path) -> None:
     import importlib.util
-    import sys
     from types import SimpleNamespace
 
     from rustest_django.unittest_guard import _resolve_test_class
@@ -146,8 +124,5 @@ def test_module_imported_after_earlier_lookups_is_resolved(tmp_path: Path) -> No
     spec = importlib.util.spec_from_file_location("late_guard_module", source)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    sys.modules["late_guard_module"] = module
-    try:
+    with temporary_module(module):
         assert _resolve_test_class(node) is module.LateTests
-    finally:
-        del sys.modules["late_guard_module"]
