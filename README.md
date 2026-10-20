@@ -49,6 +49,24 @@ pytest-django test suite runs by swapping `pytest_django` imports for `rustest_d
 [`docs/spec/api.md`](docs/spec/api.md#name-swap)) and running rustest with
 `--pytest-compat` if any test files still `import pytest` directly.
 
+## Agent skills
+
+Two [agent skills](skills/) help a coding agent work with rustest-django in your project:
+
+- [`rustest-django-migrate-tests`](skills/rustest-django-migrate-tests/SKILL.md): port a
+  pytest-django suite, including rewriting Django `TestCase`-family classes.
+- [`rustest-django-doctor`](skills/rustest-django-doctor/SKILL.md): diagnose a failing or
+  confusing test as a suite problem or a known rustest-django limitation.
+
+Install both with [skills.sh](https://skills.sh), which supports Claude Code and other agents:
+
+```
+npx skills add ernestomancebo/rustest-django
+```
+
+The agent loads a skill when your request matches its description, so ask for the task,
+for example "migrate these tests to rustest-django".
+
 ## Example projects
 
 [`examples/`](examples/) has three self-contained Django projects proving the
