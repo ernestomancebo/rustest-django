@@ -216,3 +216,18 @@ def test_autouse_fixture_added_to_a_loaded_module_is_found(
     finally:
         del sys.modules[host.__name__]
         register_fixtures(saved)
+
+
+def test_marker_activation_reaches_tests_in_nested_directories(tmp_path: Path) -> None:
+    _write(tmp_path / "conftest.py", CONFTEST)
+    _write(
+        tmp_path / "deep" / "er" / "test_nested.py",
+        """
+        from rustest import mark
+
+        @mark.django_isolate_apps("django.contrib.contenttypes")
+        def test_isolated(django_isolated_apps):
+            assert django_isolated_apps is not None
+        """,
+    )
+    _passes(tmp_path)
