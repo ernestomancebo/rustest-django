@@ -103,3 +103,23 @@ def test_flag_requested_after_isolation_built_raises(
 ) -> None:
     assert _late_transactional_request_error is not None
     assert "already been built" in str(_late_transactional_request_error)
+
+
+@fixture
+def _dynamic_transactional_thing(request):
+    request.getfixturevalue("transactional_db")
+    return Thing.objects.create(name="eta")
+
+
+@parametrize("_iteration", [0, 1])
+def test_fixture_requesting_transactional_db_dynamically_is_flushed(
+    _dynamic_transactional_thing, _iteration: int
+) -> None:
+    assert Thing.objects.count() == 1
+
+
+def test_late_stronger_request_after_dynamic_db_still_raises(request) -> None:
+    request.getfixturevalue("db")
+
+    with raises(RuntimeError):
+        request.getfixturevalue("transactional_db")
