@@ -134,3 +134,6 @@ class TestSomething:
 ```
 
 This takes the same keyword arguments as `@mark.django_db(...)`.
+
+Like `@pytest.mark.django_db`, it also works bare: `@django_db` on a class is the same as
+`@django_db()`. Used on a function it raises a `TypeError`; use `@mark.django_db` there.
