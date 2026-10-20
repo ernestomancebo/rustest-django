@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import django.test
 from rustest import FixtureRequest, fail, fixture
 
 from rustest_django._errors import _message
+from rustest_django.rustest_compat import module_for_path
 
 
 def _resolve_test_class(node: object) -> type | None:
@@ -22,13 +22,10 @@ def _resolve_test_class(node: object) -> type | None:
     file_path = nodeid.split("::")[0]
     if not file_path:
         return None
-    resolved_path = str(Path(file_path).resolve())
-
-    for module in list(sys.modules.values()):
-        module_file = getattr(module, "__file__", None)
-        if module_file and str(Path(module_file).resolve()) == resolved_path:
-            return getattr(module, class_name, None)
-    return None
+    module = module_for_path(Path(file_path).resolve())
+    if module is None:
+        return None
+    return getattr(module, class_name, None)
 
 
 @fixture(autouse=True)

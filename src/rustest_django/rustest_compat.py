@@ -19,12 +19,14 @@ from typing import Any
 from rustest import FixtureRequest
 from rustest.fixture_registry import get_fixture
 
-# TEMPORARY: the caches below exist only because rustest 0.18 has no
-# request.fixturenames or request.function (rustest#144). Without them every test
-# rescans all of sys.modules, which costs about 20 us per loaded module. Once a
-# released rustest provides request.fixturenames (Apex-Engineers-Inc/rustest
-# PR #150) and the minimum rustest version is raised, requested_fixtures should
-# read request.fixturenames and these caches should be deleted.
+# TEMPORARY: these caches exist because rustest 0.18 has no request.fixturenames
+# or request.function (rustest#144). Without them every test rescans all of
+# sys.modules, which costs about 20 us per loaded module. Apex-Engineers-Inc/rustest
+# PR #150 adds request.fixturenames only. Once a released rustest has it and the
+# minimum rustest version is raised, requested_fixtures should read
+# request.fixturenames and the autouse and closure caches should be deleted.
+# module_for_path stays until rustest also exposes the test's function or module,
+# because unittest_guard still needs to find a test's class from its node ID.
 #
 # The caches are valid while the loaded modules are unchanged. The signature
 # below changes when a module is imported, removed or replaced, or when a loaded
@@ -77,11 +79,16 @@ def _refresh_module_caches() -> None:
     _signature = signature
 
 
+def module_for_path(path: Path) -> ModuleType | None:
+    """Return the first loaded module whose file resolves to ``path``."""
+    _refresh_module_caches()
+    return _modules_by_path.get(path)
+
+
 def requested_fixtures(request: FixtureRequest) -> dict[str, Callable[..., Any]]:
     node_path, *identifiers = request.node.nodeid.split("::")
     path = Path(node_path).resolve()
-    _refresh_module_caches()
-    test: Any = _modules_by_path.get(path)
+    test: Any = module_for_path(path)
     if test is not None:
         for identifier in identifiers:
             test = getattr(test, identifier.split("[")[0], None)

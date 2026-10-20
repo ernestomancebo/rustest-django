@@ -41,9 +41,9 @@ def _consumer_autouse():
 )
 
 
-def _timed_run(project: Path, modules: int) -> float:
+def _timed_run(project: Path, modules: int, tests: str = TESTS) -> float:
     (project / "conftest.py").write_text(CONFTEST % {"modules": modules})
-    (project / "test_consumer.py").write_text(TESTS)
+    (project / "test_consumer.py").write_text(tests)
     started = time.perf_counter()
     result = subprocess.run(
         [sys.executable, "-m", "rustest", "--color=never", str(project)],
@@ -66,4 +66,28 @@ def test_per_test_cost_does_not_grow_with_loaded_modules(tmp_path: Path) -> None
     crowded = _timed_run(large, 5000)
     # Both runs execute the same 100 tests; only the number of loaded modules
     # differs. Setup of the crowded run costs a little, so allow a margin.
+    assert crowded < baseline * 1.6 + 1.0, (baseline, crowded)
+
+
+CLASS_TESTS = (
+    "from rustest_django import django_db\n\n"
+    "@django_db\nclass TestMany:\n"
+    + "".join(
+        f"    def test_method_{index}(self):\n        assert True\n"
+        for index in range(100)
+    )
+)
+
+
+def test_class_based_per_test_cost_does_not_grow_with_loaded_modules(
+    tmp_path: Path,
+) -> None:
+    small = tmp_path / "small"
+    large = tmp_path / "large"
+    small.mkdir()
+    large.mkdir()
+    baseline = min(
+        _timed_run(small, 10, CLASS_TESTS), _timed_run(small, 10, CLASS_TESTS)
+    )
+    crowded = _timed_run(large, 5000, CLASS_TESTS)
     assert crowded < baseline * 1.6 + 1.0, (baseline, crowded)
