@@ -123,13 +123,15 @@ def _activate_module(module: ModuleType) -> None:
         if type(loaded) is not ModuleType:
             continue
         attributes = vars(loaded)
-        conftest = attributes.get("__file__")
+        # Check the cheap attribute first so Path work only happens for the
+        # few modules that declare rustest_fixtures.
         plugins = attributes.get("rustest_fixtures", ())
+        conftest = attributes.get("__file__")
         if (
-            conftest
-            and Path(conftest).name == "conftest.py"
-            and isinstance(plugins, (list, tuple))
+            isinstance(plugins, (list, tuple))
             and "rustest_django" in plugins
+            and conftest
+            and Path(conftest).name == "conftest.py"
             and test_path.is_relative_to(Path(conftest).resolve().parent)
         ):
             break
