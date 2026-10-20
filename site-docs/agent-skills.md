@@ -12,8 +12,7 @@ agents:
 npx skills add ernestomancebo/rustest-django
 ```
 
-The agent loads a skill when your request matches its description, so just ask for the
-task.
+Ask by skill name so the right one loads.
 
 ## `rustest-django-migrate-tests`
 
@@ -24,7 +23,7 @@ re-referencing from the [Migration Guide](migration-guide.md), and the rewrite o
 already on rustest-django still has unittest-style Django test classes, or when
 rustest-django fails with "unittest-style tests are unsupported".
 
-Try: *"migrate these tests to rustest-django"*.
+Try: *"Use `rustest-django-migrate-tests` to migrate these tests to rustest-django."*
 
 ## `rustest-django-doctor`
 
@@ -34,4 +33,4 @@ than under pytest-django. It tells you whether the cause is your suite or a know
 limitation (see [Unsupported features](reference/unsupported.md)), and it does not silently
 "fix" causes that have no fix.
 
-Try: *"why does this test fail under rustest-django?"*.
+Try: *"Use `rustest-django-doctor` to explain why this test fails under rustest-django."*

@@ -1,6 +1,7 @@
 # rustest-django
 
 [![Docs](https://readthedocs.org/projects/rustest-django/badge/?version=stable)](https://rustest-django.readthedocs.io/en/stable/)
+<!-- Socket badge is pinned to a version: bump it on each release. -->
 [![Socket Badge](https://badge.socket.dev/pypi/package/rustest-django/0.0.2?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/rustest-django/0.0.2?artifact_id=tar-gz)
 
 Django integration for [rustest](https://github.com/apex-engineers-inc/rustest): a port of
@@ -8,9 +9,8 @@ Django integration for [rustest](https://github.com/apex-engineers-inc/rustest):
 
 Goal: existing pytest-django test suites run under rustest with only an import-path swap.
 
-> **Migrating an existing suite?** Let Claude Code do the rewrite. Install the
-> [agent skills](#agent-skills) with `npx skills add ernestomancebo/rustest-django`, then ask
-> "migrate these tests to rustest-django".
+> **Migrating an existing suite?** Let Claude Code do the rewrite with the
+> [agent skills](#agent-skills).
 
 ## Status
 
@@ -70,9 +70,9 @@ Install both with [skills.sh](https://skills.sh), which supports Claude Code and
 npx skills add ernestomancebo/rustest-django
 ```
 
-The agent loads a skill when your request matches its description, so ask for the task,
-for example "migrate these tests to rustest-django" or "why does this test fail under
-rustest-django?". See [Agent skills](https://rustest-django.readthedocs.io/en/latest/agent-skills/).
+Ask by name so the right skill loads, for example "Use `rustest-django-migrate-tests` to
+migrate these tests" or "Use `rustest-django-doctor` to explain this failure". See
+[Agent skills](https://rustest-django.readthedocs.io/en/latest/agent-skills/).
 
 ## Example projects
 

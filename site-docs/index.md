@@ -45,9 +45,7 @@ That's the whole integration surface -- one line in `conftest.py`. From there:
   [unsupported features](reference/unsupported.md) in detail.
 
 !!! tip "Migrating an existing suite?"
-    Let Claude Code do the rewrite. Install the [agent skills](agent-skills.md) with
-    `npx skills add ernestomancebo/rustest-django`, then ask "migrate these tests to
-    rustest-django".
+    Let Claude Code do the rewrite with the [agent skills](agent-skills.md).
 
 ## Docs versions
 

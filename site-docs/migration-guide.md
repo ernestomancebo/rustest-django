@@ -4,9 +4,7 @@ Moving an existing pytest-django test suite to rustest-django. Three changes, in
 
 !!! tip "Have Claude Code do it"
     The [`rustest-django-migrate-tests` skill](agent-skills.md) applies these steps for
-    you, including the `TestCase` rewrite. Install it with
-    `npx skills add ernestomancebo/rustest-django` and ask "migrate these tests to
-    rustest-django".
+    you, including the `TestCase` rewrite.
 
 ## 1. Swap the plugin registration
 
@@ -146,9 +144,9 @@ A handful of pytest-django features remain outside rustest-django v1's supported
   the result, so every method would otherwise silently report as passed regardless of
   what actually happened. Rewrite these as plain functions using the `db`/`transactional_db`
   fixtures, or exclude those test paths from your rustest run for now.
-- Class-level marks and module-level `pytestmark` do not propagate under rustest 0.18.
-  Use the [`django_db` class decorator](reference/markers.md#function-vs-class-marks)
-  or apply marks to test functions.
+- **Class-level marks and module-level `pytestmark`.** See
+  [Class and module marks](reference/unsupported.md#class-and-module-marks) for the
+  current limit and the workaround.
 
 The live-server, serialized-rollback, and isolated-app fixtures are implemented, along
 with the `urls`, `django_isolate_apps`, and `ignore_template_errors` function-level

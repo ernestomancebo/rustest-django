@@ -7,9 +7,6 @@ test parameter, or override it by name from your own `conftest.py`.
 
 - **`db`** -- wraps the test in a transaction, rolled back afterward. Required by any test
   that touches the database, directly or via `@mark.django_db`.
-  A fixture that needs the database in its own body can request `db` or `transactional_db`
-  as a parameter, or call `request.getfixturevalue("db")` while it runs. `django_db_reset_sequences`,
-  `django_db_serialized_rollback` and `live_server` must be parameters.
 - **`transactional_db`** -- like `db`, but truncates tables afterward instead of rolling
   back a transaction. Needed by tests that themselves rely on transaction behavior (e.g.
   testing `on_commit` callbacks).
@@ -30,6 +27,13 @@ test parameter, or override it by name from your own `conftest.py`.
   Override `django_db_modify_db_settings` for project-specific setup. Rustest's
   experimental workers do not supply a supported automatic worker identity here;
   configure a distinct suffix for each separate process.
+
+### Requesting the database from another fixture
+
+A fixture that needs the database in its own body can request `db` or `transactional_db`
+as a parameter, or call `request.getfixturevalue("db")` while it runs.
+`django_db_reset_sequences`, `django_db_serialized_rollback` and `live_server` must be
+parameters.
 
 ## Live server
 
